@@ -1,0 +1,33 @@
+# Environnements virtuels Python
+venv/
+.venv/
+env/
+ENV/
+.env
+
+# Fichiers compilés Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Base de données SQLite
+db.sqlite3
+*.db
+
+# IDE et configuration locale
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Test et couverture
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Fichiers temporaires
+*.tmp
+*.log
