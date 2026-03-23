@@ -10,5 +10,5 @@ urlpatterns = [
     path('api/avis/', include('apps.avis.urls')),
 
     # (optionnel plus tard)
-    # path('api/ai/', include('apps.ai.urls')),
+    #path('api/ai/', include('apps.ai.urls')),
 ]
