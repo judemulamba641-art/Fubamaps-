@@ -1,14 +1,16 @@
 from django.db import models
 from apps.core.models import BaseModel
 
-
 # =========================================================
 # 🏷️ CATÉGORIES (ex: Restaurant, Boutique, Pharmacie)
 # =========================================================
 
+
 class Category(BaseModel):
     name = models.CharField(max_length=100, unique=True)
-    icon = models.CharField(max_length=100, blank=True, null=True)  # pour frontend (icône map)
+    icon = models.CharField(
+        max_length=100, blank=True, null=True
+    )  # pour frontend (icône map)
 
     class Meta:
         verbose_name = "Catégorie"
@@ -22,9 +24,12 @@ class Category(BaseModel):
 # 🧩 TYPES (ex: Fast-food, Supermarché, Clinique)
 # =========================================================
 
+
 class CommerceType(BaseModel):
     name = models.CharField(max_length=100)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="types")
+    category = models.ForeignKey(
+        Category, on_delete=models.CASCADE, related_name="types"
+    )
 
     class Meta:
         verbose_name = "Type de commerce"
@@ -39,21 +44,16 @@ class CommerceType(BaseModel):
 # 📍 COMMERCE PRINCIPAL
 # =========================================================
 
+
 class Commerce(BaseModel):
     name = models.CharField(max_length=255)
 
     category = models.ForeignKey(
-        Category,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="commerces"
+        Category, on_delete=models.SET_NULL, null=True, related_name="commerces"
     )
 
     type = models.ForeignKey(
-        CommerceType,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="commerces"
+        CommerceType, on_delete=models.SET_NULL, null=True, related_name="commerces"
     )
 
     description = models.TextField(blank=True, null=True)
@@ -66,6 +66,10 @@ class Commerce(BaseModel):
 
     # ⭐ NOTE MOYENNE (optimisation)
     average_rating = models.FloatField(default=0)
+
+    # email
+
+    email = models.EmailField(blank=True, null=True)
 
     # 📞 Infos utiles
     phone = models.CharField(max_length=20, blank=True, null=True)

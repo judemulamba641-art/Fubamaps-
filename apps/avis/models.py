@@ -3,10 +3,10 @@ from apps.commerces.models import Commerce
 from apps.core.models import TimeStampedModel
 import uuid
 
-
 # =========================================================
 # 💰 CHOIX RAPPORT QUALITÉ / PRIX
 # =========================================================
+
 
 class PriceRating(models.IntegerChoices):
     VERY_EXPENSIVE = 1, "Très cher"
@@ -20,6 +20,7 @@ class PriceRating(models.IntegerChoices):
 # ⭐ AVIS
 # =========================================================
 
+
 class Avis(TimeStampedModel):
     """
     Avis utilisateur sur un commerce
@@ -30,20 +31,15 @@ class Avis(TimeStampedModel):
 
     # 🔗 Relation
     commerce = models.ForeignKey(
-        Commerce,
-        on_delete=models.CASCADE,
-        related_name="avis"
+        Commerce, on_delete=models.CASCADE, related_name="avis"
     )
 
     # ⭐ Note globale
-    note = models.PositiveSmallIntegerField(
-        choices=[(i, i) for i in range(1, 6)]
-    )
+    note = models.PositiveSmallIntegerField(choices=[(i, i) for i in range(1, 6)])
 
     # 💰 Rapport prix
     price_rating = models.PositiveSmallIntegerField(
-        choices=PriceRating.choices,
-        default=PriceRating.NORMAL
+        choices=PriceRating.choices, default=PriceRating.NORMAL
     )
 
     # 📝 Commentaire
@@ -78,6 +74,7 @@ class Avis(TimeStampedModel):
 # 🚨 SIGNALEMENT (MODÉRATION)
 # =========================================================
 
+
 class AvisReport(TimeStampedModel):
     """
     Signalement d’un avis (spam, abus, faux avis)
@@ -90,11 +87,7 @@ class AvisReport(TimeStampedModel):
         ("other", "Autre"),
     ]
 
-    avis = models.ForeignKey(
-        Avis,
-        on_delete=models.CASCADE,
-        related_name="reports"
-    )
+    avis = models.ForeignKey(Avis, on_delete=models.CASCADE, related_name="reports")
 
     reason = models.CharField(max_length=20, choices=REASON_CHOICES)
     description = models.TextField(blank=True)

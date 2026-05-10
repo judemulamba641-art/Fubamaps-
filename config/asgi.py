@@ -8,7 +8,7 @@ import os
 from django.core.asgi import get_asgi_application
 
 # 🔐 Définir le settings module
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 # 🚀 Application ASGI
 application = get_asgi_application()

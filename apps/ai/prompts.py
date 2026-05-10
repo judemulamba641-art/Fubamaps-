@@ -31,6 +31,7 @@ Si tu n'as pas assez d'information, dis-le simplement.
 # 📍 RECOMMANDATION CLASSIQUE
 # =========================================================
 
+
 def build_recommendation_prompt(commerces_data):
     prompt = """
 Analyse ces commerces et donne une recommandation claire.
@@ -62,6 +63,7 @@ Avis: {c['comment']}
 # =========================================================
 # 💬 CONVERSATION INTELLIGENTE
 # =========================================================
+
 
 def build_chat_prompt(user_message, commerces_data=None, context=None):
     """
@@ -105,6 +107,7 @@ Réponds de manière naturelle et utile.
 # 🧭 GUIDE UTILISATEUR (APP)
 # =========================================================
 
+
 def build_app_guide_prompt(user_message):
     """
     Guide l'utilisateur dans l'utilisation de l'application
@@ -128,6 +131,7 @@ Donne des étapes simples et pratiques.
 # =========================================================
 # 🚨 SÉCURITÉ
 # =========================================================
+
 
 def build_safety_prompt(commerces_data):
     """
@@ -161,6 +165,7 @@ Avis: {c['comment']}
 # 💰 ANALYSE PRIX
 # =========================================================
 
+
 def build_price_analysis_prompt(commerces_data):
     prompt = """
 Compare ces commerces selon le rapport qualité/prix.
@@ -183,6 +188,7 @@ Note: {c['rating']}
 # =========================================================
 # 🧠 ROUTEUR INTELLIGENT
 # =========================================================
+
 
 def detect_intent(user_message):
     """

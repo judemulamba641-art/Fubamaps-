@@ -59,9 +59,8 @@ def calculate_average_rating(commerce):
     """
     Calculer la moyenne des notes
     """
-    result = Avis.objects.filter(
-        commerce=commerce,
-        is_active=True
-    ).aggregate(avg_note=Avg("note"))
+    result = Avis.objects.filter(commerce=commerce, is_active=True).aggregate(
+        avg_note=Avg("note")
+    )
 
     return result["avg_note"] or 0

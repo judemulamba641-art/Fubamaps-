@@ -2,10 +2,10 @@ from rest_framework import serializers
 from .models import Avis, AvisReport
 from apps.commerces.models import Commerce
 
-
 # =========================================================
 # 🏷️ COMMERCE LIGHT (pour affichage dans avis)
 # =========================================================
+
 
 class CommerceLightSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,13 +22,13 @@ class CommerceLightSerializer(serializers.ModelSerializer):
 # ⭐ AVIS (READ)
 # =========================================================
 
+
 class AvisSerializer(serializers.ModelSerializer):
     commerce = CommerceLightSerializer(read_only=True)
 
     # affichage texte du prix
     price_label = serializers.CharField(
-        source="get_price_rating_display",
-        read_only=True
+        source="get_price_rating_display", read_only=True
     )
 
     class Meta:
@@ -36,21 +36,15 @@ class AvisSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "uuid",
-
             "commerce",
-
             "note",
             "price_rating",
             "price_label",
-
             "commentaire",
             "user_name",
-
             "likes",
             "dislikes",
-
             "is_reported",
-
             "created_at",
         ]
 
@@ -58,6 +52,7 @@ class AvisSerializer(serializers.ModelSerializer):
 # =========================================================
 # ✍️ CREATE / WRITE
 # =========================================================
+
 
 class AvisCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -93,6 +88,7 @@ class AvisCreateSerializer(serializers.ModelSerializer):
 # ✏️ UPDATE (optionnel V1)
 # =========================================================
 
+
 class AvisUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Avis
@@ -106,6 +102,7 @@ class AvisUpdateSerializer(serializers.ModelSerializer):
 # =========================================================
 # 👍 LIKE / DISLIKE
 # =========================================================
+
 
 class AvisReactionSerializer(serializers.ModelSerializer):
     action = serializers.ChoiceField(choices=["like", "dislike"])
@@ -130,6 +127,7 @@ class AvisReactionSerializer(serializers.ModelSerializer):
 # 🚨 REPORT
 # =========================================================
 
+
 class AvisReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = AvisReport
@@ -153,6 +151,7 @@ class AvisReportSerializer(serializers.ModelSerializer):
 # =========================================================
 # 📊 STATS (pour IA ou frontend)
 # =========================================================
+
 
 class AvisStatsSerializer(serializers.Serializer):
     """

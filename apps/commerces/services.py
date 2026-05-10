@@ -2,10 +2,10 @@ from django.db.models import Avg
 from .models import Commerce
 from apps.core.utils import haversine_distance
 
-
 # =========================================================
 # 📍 CALCUL DISTANCE + ENRICHISSEMENT
 # =========================================================
+
 
 def add_distance_to_commerces(commerces, user_lat, user_lon):
     """
@@ -14,10 +14,7 @@ def add_distance_to_commerces(commerces, user_lat, user_lon):
 
     for commerce in commerces:
         distance = haversine_distance(
-            user_lat,
-            user_lon,
-            commerce.latitude,
-            commerce.longitude
+            user_lat, user_lon, commerce.latitude, commerce.longitude
         )
         commerce.distance = round(distance, 2)
 
@@ -27,6 +24,7 @@ def add_distance_to_commerces(commerces, user_lat, user_lon):
 # =========================================================
 # 📍 FILTRER PAR RAYON
 # =========================================================
+
 
 def filter_commerces_by_radius(commerces, radius_km):
     """
@@ -40,6 +38,7 @@ def filter_commerces_by_radius(commerces, radius_km):
 # 🏷️ FILTRER PAR CATÉGORIE
 # =========================================================
 
+
 def filter_by_category(commerces, category_id):
     if not category_id:
         return commerces
@@ -51,6 +50,7 @@ def filter_by_category(commerces, category_id):
 # 🧩 FILTRER PAR TYPE
 # =========================================================
 
+
 def filter_by_type(commerces, type_id):
     if not type_id:
         return commerces
@@ -61,6 +61,7 @@ def filter_by_type(commerces, type_id):
 # =========================================================
 # ⭐ TRI INTELLIGENT
 # =========================================================
+
 
 def sort_commerces(commerces, sort_by="distance"):
     """
@@ -75,11 +76,7 @@ def sort_commerces(commerces, sort_by="distance"):
 
     if sort_by == "smart":
         return sorted(
-            commerces,
-            key=lambda c: (
-                getattr(c, "distance", 999),
-                -c.average_rating
-            )
+            commerces, key=lambda c: (getattr(c, "distance", 999), -c.average_rating)
         )
 
     # défaut = distance
@@ -89,6 +86,7 @@ def sort_commerces(commerces, sort_by="distance"):
 # =========================================================
 # 📦 LIMITER POUR MOBILE
 # =========================================================
+
 
 def limit_results(commerces, limit=50):
     """
@@ -100,6 +98,7 @@ def limit_results(commerces, limit=50):
 # =========================================================
 # 📊 CALCUL MOYENNE DES NOTES
 # =========================================================
+
 
 def update_commerce_rating(commerce):
     """
@@ -118,6 +117,7 @@ def update_commerce_rating(commerce):
 # 🚀 FONCTION PRINCIPALE (ULTRA IMPORTANTE)
 # =========================================================
 
+
 def get_nearby_commerces(
     user_lat,
     user_lon,
@@ -125,7 +125,7 @@ def get_nearby_commerces(
     category_id=None,
     type_id=None,
     sort_by="smart",
-    limit=50
+    limit=50,
 ):
     """
     Pipeline complet :
@@ -138,8 +138,9 @@ def get_nearby_commerces(
 
     # 1️⃣ récupérer (optimisé)
     commerces = list(
-        Commerce.objects.filter(is_active=True, is_deleted=False)
-        .select_related("category", "type")
+        Commerce.objects.filter(is_active=True, is_deleted=False).select_related(
+            "category", "type"
+        )
     )
 
     # 2️⃣ distance

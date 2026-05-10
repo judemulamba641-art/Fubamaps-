@@ -2,10 +2,10 @@ import math
 from datetime import datetime
 from django.utils.text import slugify
 
-
 # =========================================================
 # 📍 GEOLOCATION (TRÈS IMPORTANT POUR FUBAMAPS)
 # =========================================================
+
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
@@ -19,7 +19,10 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     dlat = lat2 - lat1
     dlon = lon2 - lon1
 
-    a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     return R * c
@@ -37,6 +40,7 @@ def is_within_radius(user_lat, user_lon, target_lat, target_lon, radius_km=5):
 # ⭐ NOTES / AVIS
 # =========================================================
 
+
 def calculate_average_rating(reviews):
     """
     Calcule la moyenne des notes
@@ -52,6 +56,7 @@ def calculate_average_rating(reviews):
 # 🔤 STRING UTILS
 # =========================================================
 
+
 def generate_slug(text):
     """
     Génère un slug propre
@@ -63,6 +68,7 @@ def generate_slug(text):
 # 🧠 IA SIMPLE (V1)
 # =========================================================
 
+
 def generate_simple_recommendation(commerces):
     """
     Génère une recommandation simple sans IA externe
@@ -73,8 +79,7 @@ def generate_simple_recommendation(commerces):
 
     # Trier par distance puis note
     commerces_sorted = sorted(
-        commerces,
-        key=lambda c: (c.get("distance", 999), -c.get("rating", 0))
+        commerces, key=lambda c: (c.get("distance", 999), -c.get("rating", 0))
     )
 
     best = commerces_sorted[0]
@@ -90,6 +95,7 @@ def generate_simple_recommendation(commerces):
 # 📅 DATE UTILS
 # =========================================================
 
+
 def format_datetime(dt: datetime):
     """
     Formate une date en string lisible
@@ -104,13 +110,14 @@ def format_datetime(dt: datetime):
 # 📦 PERFORMANCE / CACHE SIMPLE
 # =========================================================
 
+
 def chunk_queryset(queryset, chunk_size=100):
     """
     Permet de traiter un queryset par morceaux (optimisation mémoire)
     """
     start = 0
     while True:
-        chunk = queryset[start:start + chunk_size]
+        chunk = queryset[start : start + chunk_size]
         if not chunk:
             break
         yield chunk
@@ -120,6 +127,7 @@ def chunk_queryset(queryset, chunk_size=100):
 # =========================================================
 # 🔐 VALIDATION SIMPLE
 # =========================================================
+
 
 def validate_latitude(latitude):
     return -90 <= latitude <= 90
@@ -132,6 +140,7 @@ def validate_longitude(longitude):
 # =========================================================
 # 📱 MOBILE OPTIMIZATION
 # =========================================================
+
 
 def compress_response(data, limit=50):
     """

@@ -17,11 +17,20 @@ from .serializers import (
     AvisStatsSerializer,
 )
 from .services import create_review, get_filtered_reviews
+from rest_framework.decorators import api_view
+
+
+@api_view(["GET"])
+def get_avis(request):
+    avis = Avis.objects.all()
+    serializer = AvisSerializer(avis, many=True)
+    return Response(serializer.data)
 
 
 # =========================================================
 # ✍️ CREATE AVIS
 # =========================================================
+
 
 class AvisCreateView(APIView):
     """
@@ -34,10 +43,7 @@ class AvisCreateView(APIView):
         if serializer.is_valid():
             review = create_review(serializer.validated_data)
 
-            return Response(
-                AvisSerializer(review).data,
-                status=status.HTTP_201_CREATED
-            )
+            return Response(AvisSerializer(review).data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -46,10 +52,12 @@ class AvisCreateView(APIView):
 # ✏️ UPDATE AVIS
 # =========================================================
 
+
 class AvisUpdateView(generics.UpdateAPIView):
     """
     PUT /api/avis/{id}/update/
     """
+
     queryset = Avis.objects.filter(is_active=True)
     serializer_class = AvisUpdateSerializer
     lookup_field = "id"
@@ -58,6 +66,7 @@ class AvisUpdateView(generics.UpdateAPIView):
 # =========================================================
 # 🗑️ DELETE (SOFT)
 # =========================================================
+
 
 class AvisDeleteView(APIView):
     """
@@ -70,15 +79,13 @@ class AvisDeleteView(APIView):
         avis.is_active = False
         avis.save(update_fields=["is_active"])
 
-        return Response(
-            {"message": "Avis supprimé"},
-            status=status.HTTP_204_NO_CONTENT
-        )
+        return Response({"message": "Avis supprimé"}, status=status.HTTP_204_NO_CONTENT)
 
 
 # =========================================================
 # 📊 LISTE AVIS PAR COMMERCE (FILTRABLE)
 # =========================================================
+
 
 class CommerceAvisListView(APIView):
     """
@@ -106,6 +113,7 @@ class CommerceAvisListView(APIView):
 # 📈 STATS (ULTRA IMPORTANT POUR IA)
 # =========================================================
 
+
 class AvisStatsView(APIView):
     """
     GET /api/avis/commerce/{id}/stats/
@@ -124,9 +132,7 @@ class AvisStatsView(APIView):
         )
 
         # distribution des notes
-        distribution = {
-            i: avis.filter(note=i).count() for i in range(1, 6)
-        }
+        distribution = {i: avis.filter(note=i).count() for i in range(1, 6)}
 
         data = {
             "average_rating": round(stats["average_rating"] or 0, 2),
@@ -143,6 +149,7 @@ class AvisStatsView(APIView):
 # =========================================================
 # 👍 LIKE / DISLIKE
 # =========================================================
+
 
 class AvisReactionView(APIView):
     """
@@ -165,6 +172,7 @@ class AvisReactionView(APIView):
 # 🚨 REPORT AVIS
 # =========================================================
 
+
 class AvisReportView(APIView):
     """
     POST /api/avis/{id}/report/
@@ -180,9 +188,6 @@ class AvisReportView(APIView):
 
         if serializer.is_valid():
             serializer.save()
-            return Response(
-                {"message": "Avis signalé"},
-                status=status.HTTP_201_CREATED
-            )
+            return Response({"message": "Avis signalé"}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=400)

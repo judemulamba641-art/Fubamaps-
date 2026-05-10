@@ -24,7 +24,7 @@ class TimeStampedModel(models.Model):
 
     class Meta:
         abstract = True
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
 
 class ActiveModel(models.Model):
@@ -55,12 +55,7 @@ class SoftDeleteModel(models.Model):
         abstract = True
 
 
-class BaseModel(
-    UUIDModel,
-    TimeStampedModel,
-    ActiveModel,
-    SoftDeleteModel
-):
+class BaseModel(UUIDModel, TimeStampedModel, ActiveModel, SoftDeleteModel):
     """
     Modèle de base global du projet
     """

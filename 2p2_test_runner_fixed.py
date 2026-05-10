@@ -11,12 +11,17 @@ def print_response(label, response):
         result = response.text
 
     print(f"\n{label} (HTTP {response.status_code})")
-    print(json.dumps(result, indent=2, ensure_ascii=False) if isinstance(result, (dict, list)) else result)
+    print(
+        json.dumps(result, indent=2, ensure_ascii=False)
+        if isinstance(result, (dict, list))
+        else result
+    )
 
 
 # =========================================================
 # 🏪 CREATE COMMERCE
 # =========================================================
+
 
 def create_commerce():
     url = f"{BASE_URL}/commerces/"
@@ -27,7 +32,7 @@ def create_commerce():
         "longitude": 15.322,
         "description": "Restaurant test",
         "category": 1,
-        "type": 1
+        "type": 1,
     }
     response = requests.post(url, json=data)
     print_response("CREATE COMMERCE", response)
@@ -40,6 +45,7 @@ def create_commerce():
 # ⭐ CREATE AVIS
 # =========================================================
 
+
 def create_avis(commerce_id):
     url = f"{BASE_URL}/avis/"
     data = {
@@ -47,7 +53,7 @@ def create_avis(commerce_id):
         "note": 4,
         "price_rating": 3,
         "commentaire": "Bon mais un peu cher",
-        "user_name": "TestUser"
+        "user_name": "TestUser",
     }
     response = requests.post(url, json=data)
     print_response("CREATE AVIS", response)
@@ -59,6 +65,7 @@ def create_avis(commerce_id):
 # 📍 GET NEARBY
 # =========================================================
 
+
 def get_nearby():
     url = f"{BASE_URL}/commerces/nearby/?lat=-4.325&lng=15.322"
     response = requests.get(url)
@@ -68,6 +75,7 @@ def get_nearby():
 # =========================================================
 # 🤖 AI RECOMMENDATION
 # =========================================================
+
 
 def get_ai():
     url = f"{BASE_URL}/ai/recommendation/?lat=-4.325&lng=15.322"
@@ -79,11 +87,10 @@ def get_ai():
 # 💬 AI CHAT
 # =========================================================
 
+
 def ai_chat():
     url = f"{BASE_URL}/ai/chat/"
-    data = {
-        "message": "Je cherche un restaurant pas cher près de moi"
-    }
+    data = {"message": "Je cherche un restaurant pas cher près de moi"}
     response = requests.post(url, json=data)
     print_response("AI CHAT", response)
 
@@ -91,6 +98,7 @@ def ai_chat():
 # =========================================================
 # 🚀 RUN ALL TESTS
 # =========================================================
+
 
 def run_tests():
     print("\n🚀 START TEST RUNNER\n")

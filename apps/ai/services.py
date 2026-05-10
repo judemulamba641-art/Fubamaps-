@@ -12,7 +12,6 @@ from .prompts import (
     detect_intent,
 )
 
-
 # =========================================================
 # 🔐 INIT OPENAI
 # =========================================================
@@ -24,6 +23,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # 📊 PRÉPARATION DES DONNÉES
 # =========================================================
 
+
 def prepare_commerce_data(commerces):
     """
     Transforme les objets Commerce en données simples pour IA
@@ -34,13 +34,19 @@ def prepare_commerce_data(commerces):
     for c in commerces:
         review = c.avis.filter(is_active=True).first()
 
-        data.append({
-            "name": c.name,
-            "distance": getattr(c, "distance", "N/A"),
-            "rating": getattr(c, "average_rating", 0),
-            "price": review.get_price_rating_display() if review else "Non précisé",
-            "comment": (review.commentaire[:120] if review and review.commentaire else "Pas d’avis"),
-        })
+        data.append(
+            {
+                "name": c.name,
+                "distance": getattr(c, "distance", "N/A"),
+                "rating": getattr(c, "average_rating", 0),
+                "price": review.get_price_rating_display() if review else "Non précisé",
+                "comment": (
+                    review.commentaire[:120]
+                    if review and review.commentaire
+                    else "Pas d’avis"
+                ),
+            }
+        )
 
     return data
 
@@ -48,6 +54,7 @@ def prepare_commerce_data(commerces):
 # =========================================================
 # 🤖 APPEL OPENAI (CENTRAL)
 # =========================================================
+
 
 def call_openai(prompt, temperature=0.6, max_tokens=180):
     """
@@ -74,6 +81,7 @@ def call_openai(prompt, temperature=0.6, max_tokens=180):
 # =========================================================
 # 🧠 ROUTEUR PRINCIPAL IA
 # =========================================================
+
 
 def generate_ai_response(user_message, commerces=None, context=None):
     """
@@ -104,9 +112,7 @@ def generate_ai_response(user_message, commerces=None, context=None):
     else:
         # 💬 conversation naturelle
         prompt = build_chat_prompt(
-            user_message=user_message,
-            commerces_data=commerces_data,
-            context=context
+            user_message=user_message, commerces_data=commerces_data, context=context
         )
 
     return call_openai(prompt)
@@ -115,6 +121,7 @@ def generate_ai_response(user_message, commerces=None, context=None):
 # =========================================================
 # 📍 RÉPONSE RAPIDE (SANS CHAT)
 # =========================================================
+
 
 def get_ai_recommendation(commerces):
     """
@@ -133,6 +140,7 @@ def get_ai_recommendation(commerces):
 # =========================================================
 # 💬 MODE CHAT CONTINU (FUTUR)
 # =========================================================
+
 
 def generate_chat_response(user_message, commerces=None, previous_messages=None):
     """

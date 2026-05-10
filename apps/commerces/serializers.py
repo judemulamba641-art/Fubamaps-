@@ -35,14 +35,13 @@ class CommerceTypeSerializer(serializers.ModelSerializer):
 
 
 # =========================================================
-# 📍 COMMERCE (READ - pour frontend / carte)
+# 📍 COMMERCE (READ)
 # =========================================================
 
 class CommerceSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     type = CommerceTypeSerializer(read_only=True)
 
-    # ⭐ Champs calculés
     distance = serializers.SerializerMethodField()
     rating = serializers.FloatField(source="average_rating", read_only=True)
 
@@ -53,32 +52,24 @@ class CommerceSerializer(serializers.ModelSerializer):
             "uuid",
             "name",
             "description",
-
             "category",
             "type",
-
             "latitude",
             "longitude",
             "address",
-
             "rating",
             "distance",
-
             "phone",
             "opening_hours",
-
             "created_at",
         ]
 
     def get_distance(self, obj):
-        """
-        Récupère la distance calculée dans la vue
-        """
         return getattr(obj, "distance", None)
 
 
 # =========================================================
-# ✍️ CREATE / UPDATE (WRITE)
+# ✍️ CREATE / UPDATE
 # =========================================================
 
 class CommerceCreateUpdateSerializer(serializers.ModelSerializer):
@@ -96,7 +87,6 @@ class CommerceCreateUpdateSerializer(serializers.ModelSerializer):
             "opening_hours",
         ]
 
-    # 🔐 Validation GPS
     def validate_latitude(self, value):
         if not (-90 <= value <= 90):
             raise serializers.ValidationError("Latitude invalide")
@@ -107,16 +97,34 @@ class CommerceCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Longitude invalide")
         return value
 
+    def validate(self, data):
+        latitude = data.get("latitude")
+        longitude = data.get("longitude")
+
+        instance = getattr(self, "instance", None)
+
+        queryset = Commerce.objects.filter(
+            latitude__range=(latitude - 0.0001, latitude + 0.0001),
+            longitude__range=(longitude - 0.0001, longitude + 0.0001),
+            is_deleted=False
+        )
+
+        if instance:
+            queryset = queryset.exclude(id=instance.id)
+
+        if queryset.exists():
+            raise serializers.ValidationError({
+                "error": "Un commerce existe déjà à cet emplacement"
+            })
+
+        return data
+
 
 # =========================================================
-# 🗺️ VERSION LÉGÈRE (mobile / map optimisation)
+# 🗺️ MAP
 # =========================================================
 
 class CommerceMapSerializer(serializers.ModelSerializer):
-    """
-    Version ultra légère pour Google Maps
-    """
-
     class Meta:
         model = Commerce
         fields = [
@@ -129,7 +137,7 @@ class CommerceMapSerializer(serializers.ModelSerializer):
 
 
 # =========================================================
-# 📊 LISTE PAR CATÉGORIE (pour cercles map)
+# 📊 BY CATEGORY
 # =========================================================
 
 class CommerceByCategorySerializer(serializers.ModelSerializer):

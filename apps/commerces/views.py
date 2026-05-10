@@ -1,8 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-from rest_framework.viewsets import ModelViewSet
 
 from django.shortcuts import get_object_or_404
 
@@ -104,11 +102,7 @@ class CommerceCreateView(generics.CreateAPIView):
     """
     POST /api/commerces/create/
     """
-
-    queryset = Commerce.objects.filter(
-        is_deleted=False
-    )
-
+    queryset = Commerce.objects.all()
     serializer_class = CommerceCreateUpdateSerializer
 
 
@@ -124,12 +118,8 @@ class CommerceDetailView(APIView):
 
     def get(self, request, id):
         commerce = get_object_or_404(
-            Commerce.objects.select_related(
-                "category",
-                "type"
-            ),
-            id=id,
-            is_deleted=False,
+            Commerce.objects.select_related("category", "type"),
+            id=id
         )
 
         serializer = CommerceSerializer(commerce)
@@ -146,11 +136,7 @@ class CommerceUpdateView(generics.UpdateAPIView):
     """
     PUT /api/commerces/{id}/update/
     """
-
-    queryset = Commerce.objects.filter(
-        is_deleted=False
-    )
-
+    queryset = Commerce.objects.all()
     serializer_class = CommerceCreateUpdateSerializer
 
     lookup_field = "id"
@@ -177,10 +163,8 @@ class CommerceDeleteView(APIView):
         commerce.soft_delete()
 
         return Response(
-            {
-                "message": "Commerce supprimé"
-            },
-            status=status.HTTP_200_OK
+            {"message": "Commerce supprimé"},
+            status=status.HTTP_204_NO_CONTENT
         )
 
 
@@ -200,10 +184,8 @@ class NearbyCommerceView(APIView):
 
         if not lat or not lng:
             return Response(
-                {
-                    "error": "lat et lng requis"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+                {"error": "lat et lng requis"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         radius = float(
@@ -247,10 +229,7 @@ class CommerceMapView(APIView):
     """
 
     def get(self, request):
-        commerces = Commerce.objects.filter(
-            is_active=True,
-            is_deleted=False
-        )
+        commerces = Commerce.objects.filter(is_active=True, is_deleted=False)
 
         serializer = CommerceMapSerializer(
             commerces,
@@ -271,14 +250,10 @@ class CommerceByCategoryView(APIView):
     """
 
     def get(self, request):
-        commerces = (
-            Commerce.objects
-            .filter(
-                is_active=True,
-                is_deleted=False
-            )
-            .select_related("category")
-        )
+        commerces = Commerce.objects.filter(
+            is_active=True,
+            is_deleted=False
+        ).select_related("category")
 
         serializer = CommerceByCategorySerializer(
             commerces,
@@ -336,30 +311,3 @@ class CommerceTypeDetailView(generics.RetrieveAPIView):
     serializer_class = CommerceTypeSerializer
 
     lookup_field = "id"
-
-
-# =========================================================
-# 🛠️ VIEWSETS
-# =========================================================
-
-
-class CategoryViewSet(ModelViewSet):
-
-    queryset = Category.objects.all()
-
-    serializer_class = CategorySerializer
-
-    permission_classes = [AllowAny]
-
-
-class CommerceTypeViewSet(ModelViewSet):
-
-    queryset = (
-        CommerceType.objects
-        .select_related("category")
-        .all()
-    )
-
-    serializer_class = CommerceTypeSerializer
-
-    permission_classes = [AllowAny]
