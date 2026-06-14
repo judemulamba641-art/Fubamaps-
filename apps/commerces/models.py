@@ -1,5 +1,21 @@
+import re
+
+from django.core.exceptions import ValidationError
 from django.db import models
 from apps.core.models import BaseModel
+
+
+PHONE_PATTERN = re.compile(r"^(\+243\d{9}|243\d{9}|0\d{9})$")
+
+
+def validate_phone_number(value):
+    if value in (None, ""):
+        return
+
+    if not PHONE_PATTERN.match(value):
+        raise ValidationError(
+            "Le numéro doit être au format +243XXXXXXXXX, 243XXXXXXXXX ou 0XXXXXXXXX."
+        )
 
 # =========================================================
 # 🏷️ CATÉGORIES (ex: Restaurant, Boutique, Pharmacie)
@@ -72,7 +88,12 @@ class Commerce(BaseModel):
     email = models.EmailField(blank=True, null=True)
 
     # 📞 Infos utiles
-    phone = models.CharField(max_length=20, blank=True, null=True)
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        validators=[validate_phone_number],
+    )
 
     # 🕒 Horaires simples
     opening_hours = models.CharField(max_length=255, blank=True, null=True)
@@ -83,6 +104,26 @@ class Commerce(BaseModel):
         indexes = [
             models.Index(fields=["latitude", "longitude"]),
         ]
+
+    def clean(self):
+        super().clean()
+
+        errors = {}
+
+        if self.category_id is None:
+            errors["category"] = "Une catégorie valide est requise."
+
+        if self.type_id is None:
+            errors["type"] = "Un type de commerce valide est requis."
+
+        if self.category_id and self.type_id:
+            if self.type.category_id != self.category_id:
+                errors["type"] = (
+                    "Le type sélectionné ne correspond pas à la catégorie."
+                )
+
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self):
         return self.name

@@ -1,5 +1,31 @@
+import re
+
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from .models import Commerce, Category, CommerceType
+
+
+PHONE_PATTERN = re.compile(r"^(\+243\d{9}|243\d{9}|0\d{9})$")
+
+
+def normalize_phone_number(value):
+    if value in (None, ""):
+        return None
+
+    phone = str(value).strip()
+
+    if not PHONE_PATTERN.match(phone):
+        raise serializers.ValidationError(
+            "Le numéro doit être au format +243XXXXXXXXX, 243XXXXXXXXX ou 0XXXXXXXXX."
+        )
+
+    digits = phone[1:] if phone.startswith("+") else phone
+    if digits.startswith("0"):
+        digits = digits[1:]
+    elif digits.startswith("243"):
+        digits = digits[3:]
+
+    return f"+243{digits}"
 
 
 # =========================================================
@@ -73,6 +99,11 @@ class CommerceSerializer(serializers.ModelSerializer):
 # =========================================================
 
 class CommerceCreateUpdateSerializer(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    type = serializers.PrimaryKeyRelatedField(
+        queryset=CommerceType.objects.select_related("category").all()
+    )
+
     class Meta:
         model = Commerce
         fields = [
@@ -97,11 +128,37 @@ class CommerceCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Longitude invalide")
         return value
 
-    def validate(self, data):
-        latitude = data.get("latitude")
-        longitude = data.get("longitude")
+    def validate_phone(self, value):
+        return normalize_phone_number(value)
 
+    def validate(self, data):
         instance = getattr(self, "instance", None)
+        category = data.get("category") or getattr(instance, "category", None)
+        commerce_type = data.get("type") or getattr(instance, "type", None)
+
+        if category is None:
+            raise serializers.ValidationError({
+                "category": "Une catégorie valide est requise."
+            })
+
+        if commerce_type is None:
+            raise serializers.ValidationError({
+                "type": "Un type de commerce valide est requis."
+            })
+
+        if commerce_type.category_id != category.id:
+            raise serializers.ValidationError({
+                "type": "Le type sélectionné ne correspond pas à la catégorie."
+            })
+
+        latitude = data.get("latitude", getattr(instance, "latitude", None))
+        longitude = data.get("longitude", getattr(instance, "longitude", None))
+
+        if latitude is None or longitude is None:
+            raise serializers.ValidationError({
+                "latitude": "Latitude requise.",
+                "longitude": "Longitude requise.",
+            })
 
         queryset = Commerce.objects.filter(
             latitude__range=(latitude - 0.0001, latitude + 0.0001),
@@ -118,6 +175,29 @@ class CommerceCreateUpdateSerializer(serializers.ModelSerializer):
             })
 
         return data
+
+    def create(self, validated_data):
+        commerce = Commerce(**validated_data)
+
+        try:
+            commerce.full_clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict)
+
+        commerce.save()
+        return commerce
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        try:
+            instance.full_clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict)
+
+        instance.save()
+        return instance
 
 
 # =========================================================

@@ -1,0 +1,358 @@
+FubaMaps - Audit Final, Cohérence Métier et Migration GeoDjango/PostGIS
+
+OBJECTIF
+
+Analyser l'intégralité du dépôt FubaMaps puis effectuer toutes les corrections nécessaires afin d'obtenir :
+
+- une architecture cohérente ;
+- une géolocalisation professionnelle basée sur GeoDjango et PostGIS ;
+- une cohérence métier stricte entre Catégories, Types et Commerces ;
+- une validation robuste des données côté Backend et Frontend ;
+- une base prête pour la montée en charge.
+
+---
+
+PHASE 1 : AUDIT COMPLET
+
+Analyser l'ensemble du dépôt :
+
+- modèles Django
+- serializers
+- services
+- views
+- permissions
+- urls
+- tests
+- frontend
+- composants React
+- appels API
+- logique métier
+
+Identifier :
+
+- bugs
+- incohérences
+- duplications
+- problèmes de performance
+- dette technique
+
+Produire un rapport avant toute modification importante.
+
+---
+
+PHASE 2 : MIGRATION COMPLÈTE VERS GEODJANGO
+
+Le projet utilise actuellement latitude et longitude sous forme de FloatField.
+
+Migrer la géolocalisation vers :
+
+- GeoDjango
+- PostGIS
+
+Configurer correctement :
+
+- django.contrib.gis
+- PostgreSQL + PostGIS
+- dépendances GIS nécessaires
+
+---
+
+Modèles
+
+Ajouter un champ :
+
+PointField
+
+pour représenter la position géographique réelle.
+
+Créer les migrations nécessaires.
+
+Préserver les données existantes.
+
+Migrer automatiquement :
+
+latitude + longitude
+
+vers PointField.
+
+---
+
+Géolocalisation
+
+Implémenter :
+
+- recherche par rayon
+- commerces proches
+- calcul de distance
+- tri par proximité
+- filtrage géographique
+
+Utiliser exclusivement :
+
+GeoDjango
+PostGIS
+
+Éviter les calculs manuels lorsque PostGIS fournit une solution native.
+
+---
+
+Optimisation PostGIS
+
+Créer les index géospatiaux adaptés :
+
+- GiST
+- SP-GiST si pertinent
+
+Optimiser les requêtes spatiales.
+
+Réduire le temps de réponse.
+
+Préparer le système pour plusieurs millions de commerces.
+
+---
+
+PHASE 3 : COHÉRENCE MÉTIER CATÉGORIE ↔ TYPE
+
+Vérifier les modèles :
+
+Category
+CommerceType
+Commerce
+
+---
+
+Règle métier obligatoire
+
+Un type doit appartenir à une seule catégorie.
+
+Un commerce doit respecter :
+
+Commerce.category == Commerce.type.category
+
+---
+
+Validation Backend
+
+Ajouter des validations strictes.
+
+Interdire :
+
+- type sans catégorie
+- type incompatible
+- données incohérentes
+
+Exemple interdit :
+
+Catégorie = Santé
+Type = Garage automobile
+
+Déclencher une ValidationError explicite.
+
+---
+
+Validation Serializer
+
+Vérifier :
+
+create()
+update()
+validate()
+
+Ajouter toutes les validations nécessaires.
+
+---
+
+PHASE 4 : FILTRAGE MÉTIER FRONTEND
+
+Analyser :
+
+- CreateCommerceModal
+- EditCommerceModal
+- formulaires commerce
+
+---
+
+Comportement attendu
+
+Lorsque l'utilisateur sélectionne une catégorie :
+
+afficher uniquement les types appartenant à cette catégorie.
+
+Si la catégorie change :
+
+réinitialiser automatiquement le type.
+
+Empêcher la sélection d'un type incompatible.
+
+---
+
+Validation Frontend
+
+Ajouter validation temps réel.
+
+Afficher un message clair si :
+
+- catégorie invalide
+- type invalide
+- combinaison interdite
+
+Le frontend doit produire exactement les mêmes règles que le backend.
+
+---
+
+PHASE 5 : VALIDATION DES NUMÉROS DE TÉLÉPHONE
+
+Vérifier tous les formulaires commerce.
+
+---
+
+Frontend
+
+Ajouter validation immédiate :
+
+- format vide
+- caractères invalides
+- longueur invalide
+
+Prendre en charge :
+
+- +243XXXXXXXXX
+- 243XXXXXXXXX
+- 0XXXXXXXXX
+
+Normaliser les valeurs avant envoi.
+
+Afficher des erreurs utilisateur compréhensibles.
+
+---
+
+Backend
+
+Valider systématiquement.
+
+Refuser :
+
+- numéros invalides
+- formats incorrects
+
+Uniformiser le stockage.
+
+---
+
+PHASE 6 : API ET PERFORMANCES
+
+Analyser :
+
+- ViewSets
+- API Views
+- Services
+
+Optimiser :
+
+- select_related
+- prefetch_related
+
+Éliminer les requêtes N+1.
+
+Optimiser les réponses JSON.
+
+---
+
+PHASE 7 : TESTS
+
+Créer ou compléter :
+
+Tests GeoDjango
+
+- création de points
+- recherche par rayon
+- distance
+- commerces proches
+
+Tests métier
+
+- catégorie valide
+- type valide
+- catégorie/type incompatibles
+
+Tests API
+
+- création commerce
+- modification commerce
+- recherche commerce
+
+Tests Frontend
+
+- sélection catégorie
+- filtrage type
+- validation téléphone
+
+---
+
+PHASE 8 : MIGRATIONS
+
+Créer toutes les migrations nécessaires.
+
+Vérifier :
+
+- intégrité des données
+- compatibilité PostGIS
+- compatibilité PostgreSQL
+
+---
+
+PHASE 9 : DOCUMENTATION
+
+Mettre à jour :
+
+README
+
+Documentation API
+
+Documentation GeoDjango
+
+Documentation PostGIS
+
+Documentation métier
+
+Documentation Frontend
+
+---
+
+CONTRAINTES
+
+- Ne jamais casser les fonctionnalités existantes.
+- Respecter Django et DRF.
+- Respecter GeoDjango.
+- Respecter PostGIS.
+- Respecter SOLID.
+- Respecter Clean Architecture.
+- Préserver la compatibilité des API existantes autant que possible.
+
+---
+
+EXÉCUTION
+
+Après chaque modification :
+
+1. Exécuter les tests.
+2. Corriger les erreurs.
+3. Relancer les tests.
+4. Continuer jusqu'à stabilité complète.
+
+Ne jamais ignorer un test en échec.
+
+---
+
+LIVRABLES
+
+1. Code corrigé.
+2. GeoDjango intégré.
+3. PostGIS intégré.
+4. Migrations.
+5. Tests.
+6. Documentation.
+7. Rapport détaillé.
+8. Liste des fichiers modifiés.
+9. Liste des optimisations réalisées.
+10. Recommandations pour la prochaine phase de FubaMaps.

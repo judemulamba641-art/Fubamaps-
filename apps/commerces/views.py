@@ -229,7 +229,10 @@ class CommerceMapView(APIView):
     """
 
     def get(self, request):
-        commerces = Commerce.objects.filter(is_active=True, is_deleted=False)
+        commerces = (
+            Commerce.objects.filter(is_active=True, is_deleted=False)
+            .select_related("category", "type")
+        )
 
         serializer = CommerceMapSerializer(
             commerces,
@@ -250,10 +253,12 @@ class CommerceByCategoryView(APIView):
     """
 
     def get(self, request):
-        commerces = Commerce.objects.filter(
-            is_active=True,
-            is_deleted=False
-        ).select_related("category")
+        commerces = (
+            Commerce.objects.filter(
+                is_active=True,
+                is_deleted=False
+            ).select_related("category", "type")
+        )
 
         serializer = CommerceByCategorySerializer(
             commerces,
@@ -290,24 +295,30 @@ class CategoryDetailView(generics.RetrieveAPIView):
 
 
 class CommerceTypeListView(generics.ListAPIView):
-
-    queryset = (
-        CommerceType.objects
-        .select_related("category")
-        .all()
-    )
-
     serializer_class = CommerceTypeSerializer
+
+    def get_queryset(self):
+        queryset = (
+            CommerceType.objects
+            .select_related("category")
+            .filter(is_active=True, is_deleted=False)
+        )
+
+        category_id = self.request.query_params.get("category")
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
+        return queryset
 
 
 class CommerceTypeDetailView(generics.RetrieveAPIView):
-
-    queryset = (
-        CommerceType.objects
-        .select_related("category")
-        .all()
-    )
-
     serializer_class = CommerceTypeSerializer
 
     lookup_field = "id"
+
+    def get_queryset(self):
+        return (
+            CommerceType.objects
+            .select_related("category")
+            .filter(is_active=True, is_deleted=False)
+        )

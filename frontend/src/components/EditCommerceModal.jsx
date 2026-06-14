@@ -1,153 +1,278 @@
-import { useEffect, useState } from "react";
-import { useToast } from "./ToastContext";
-
-const API = "https://ideal-journey-jj6jxg9pwqqw3q6xj-8000.app.github.dev/api/commerces";
+import { useMemo, useState } from "react";
+import { useToast } from "./useToast";
+import {
+  getAvailableTypesForCategory,
+  normalizePhoneNumber,
+  validatePhoneNumber,
+} from "./commerceFormUtils";
 
 export default function EditCommerceModal({
   commerce,
-    onClose,
-      onUpdated,
-        categories = [],
-          types = [],
-            isDuplicate // 🔥 AJOUT
-            }) {
-              const [form, setForm] = useState({});
-                const { addToast } = useToast();
+  onClose,
+  onUpdated,
+  categories = [],
+  types = [],
+  isDuplicate,
+  API,
+}) {
+  const { addToast } = useToast();
+  const buildForm = (currentCommerce) => ({
+    name: currentCommerce?.name || "",
+    description: currentCommerce?.description || "",
+    category: currentCommerce?.category?.id || "",
+    type: currentCommerce?.type?.id || "",
+    latitude: currentCommerce?.latitude ?? "",
+    longitude: currentCommerce?.longitude ?? "",
+    address: currentCommerce?.address || "",
+    phone: currentCommerce?.phone || "",
+    opening_hours: currentCommerce?.opening_hours || "",
+  });
 
-                  useEffect(() => {
-                      if (commerce) {
-                            setForm({
-                                    name: commerce.name || "",
-                                            description: commerce.description || "",
-                                                    category: commerce.category?.id || "",
-                                                            type: commerce.type?.id || "",
-                                                                    latitude: commerce.latitude || "",
-                                                                            longitude: commerce.longitude || "",
-                                                                                    address: commerce.address || "",
-                                                                                            phone: commerce.phone || "",
-                                                                                                    opening_hours: commerce.opening_hours || ""
-                                                                                                          });
-                                                                                                              }
-                                                                                                                }, [commerce]);
+  const [form, setForm] = useState(() => buildForm(commerce));
+  const [errors, setErrors] = useState({});
 
-                                                                                                                  const handleChange = (e) => {
-                                                                                                                      setForm({ ...form, [e.target.name]: e.target.value });
-                                                                                                                        };
+  const availableTypes = useMemo(() => {
+    return getAvailableTypesForCategory(types, form.category);
+  }, [form.category, types]);
 
-                                                                                                                          const handleUpdate = async () => {
-                                                                                                                              try {
-                                                                                                                                    const lat = parseFloat(form.latitude);
-                                                                                                                                          const lng = parseFloat(form.longitude);
+  if (!commerce) return null;
 
-                                                                                                                                                if (isNaN(lat) || isNaN(lng)) {
-                                                                                                                                                        addToast("❌ Coordonnées invalides", "error");
-                                                                                                                                                                return;
-                                                                                                                                                                      }
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
-                                                                                                                                                                            // 🔥 CHECK DOUBLON
-                                                                                                                                                                                  if (isDuplicate && isDuplicate(lat, lng, commerce.id)) {
-                                                                                                                                                                                          addToast("❌ Commerce déjà à proximité", "error");
-                                                                                                                                                                                                  return;
-                                                                                                                                                                                                        }
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+      ...(name === "category" ? { type: "" } : {}),
+    }));
 
-                                                                                                                                                                                                              const dataToSend = {
-                                                                                                                                                                                                                      ...form,
-                                                                                                                                                                                                                              category: form.category ? parseInt(form.category) : null,
-                                                                                                                                                                                                                                      type: form.type ? parseInt(form.type) : null,
-                                                                                                                                                                                                                                              latitude: lat,
-                                                                                                                                                                                                                                                      longitude: lng
-                                                                                                                                                                                                                                                            };
+    setErrors((current) => {
+      const nextErrors = { ...current };
 
-                                                                                                                                                                                                                                                                  const res = await fetch(`${API}/${commerce.id}/update/`, {
-                                                                                                                                                                                                                                                                          method: "PATCH",
-                                                                                                                                                                                                                                                                                  headers: {
-                                                                                                                                                                                                                                                                                            "Content-Type": "application/json"
-                                                                                                                                                                                                                                                                                                    },
-                                                                                                                                                                                                                                                                                                            body: JSON.stringify(dataToSend)
-                                                                                                                                                                                                                                                                                                                  });
+      if (name === "phone") {
+        const phoneError = validatePhoneNumber(value);
+        if (phoneError) {
+          nextErrors.phone = phoneError;
+        } else {
+          delete nextErrors.phone;
+        }
+      }
 
-                                                                                                                                                                                                                                                                                                                        // 🔥 SAFE JSON
-                                                                                                                                                                                                                                                                                                                              let result = {};
-                                                                                                                                                                                                                                                                                                                                    try {
-                                                                                                                                                                                                                                                                                                                                            result = await res.json();
-                                                                                                                                                                                                                                                                                                                                                  } catch {}
+      if (name === "category") {
+        delete nextErrors.category;
+        delete nextErrors.type;
+      }
 
-                                                                                                                                                                                                                                                                                                                                                        if (!res.ok) {
-                                                                                                                                                                                                                                                                                                                                                                addToast("❌ " + JSON.stringify(result), "error");
-                                                                                                                                                                                                                                                                                                                                                                        return;
-                                                                                                                                                                                                                                                                                                                                                                              }
+      if (name === "type") {
+        delete nextErrors.type;
+      }
 
-                                                                                                                                                                                                                                                                                                                                                                                    addToast("✅ Commerce modifié", "success");
+      if (name === "latitude") {
+        if (Number.isNaN(Number.parseFloat(value))) {
+          nextErrors.latitude = "Latitude invalide.";
+        } else {
+          delete nextErrors.latitude;
+        }
+      }
 
-                                                                                                                                                                                                                                                                                                                                                                                          onUpdated();
-                                                                                                                                                                                                                                                                                                                                                                                                onClose();
+      if (name === "longitude") {
+        if (Number.isNaN(Number.parseFloat(value))) {
+          nextErrors.longitude = "Longitude invalide.";
+        } else {
+          delete nextErrors.longitude;
+        }
+      }
 
-                                                                                                                                                                                                                                                                                                                                                                                                    } catch (err) {
-                                                                                                                                                                                                                                                                                                                                                                                                          console.error(err);
-                                                                                                                                                                                                                                                                                                                                                                                                                addToast("❌ Erreur réseau", "error");
-                                                                                                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                                                                                                      };
+      return nextErrors;
+    });
+  };
 
-                                                                                                                                                                                                                                                                                                                                                                                                                        if (!commerce) return null;
+  const handleUpdate = async () => {
+    try {
+      const nextErrors = {};
 
-                                                                                                                                                                                                                                                                                                                                                                                                                          return (
-                                                                                                                                                                                                                                                                                                                                                                                                                              <div style={{
-                                                                                                                                                                                                                                                                                                                                                                                                                                    position: "fixed",
-                                                                                                                                                                                                                                                                                                                                                                                                                                          top: 0,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                left: 0,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                      width: "100%",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            height: "100%",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                  background: "rgba(0,0,0,0.5)",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        display: "flex",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                              justifyContent: "center",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    alignItems: "center"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <div style={{
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      background: "#fff",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              padding: 20,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      width: 350,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              borderRadius: 10
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <h2>✏️ Modifier Commerce</h2>
+      if (!form.name.trim()) {
+        nextErrors.name = "Le nom est requis.";
+      }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input name="name" value={form.name || ""} onChange={handleChange} placeholder="Nom" />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input name="description" value={form.description || ""} onChange={handleChange} placeholder="Description" />
+      if (!form.category) {
+        nextErrors.category = "La catégorie est requise.";
+      }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    {/* CATEGORY */}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <select name="category" value={form.category || ""} onChange={handleChange}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <option value="">-- Catégorie --</option>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {categories.map((cat) => (
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <option key={cat.id} value={cat.id}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          {cat.name}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </option>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ))}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </select>
+      if (!form.type) {
+        nextErrors.type = "Le type est requis.";
+      } else if (
+        !getAvailableTypesForCategory(types, form.category).some(
+          (type) => String(type.id) === String(form.type)
+        )
+      ) {
+        nextErrors.type = "Le type choisi ne correspond pas à la catégorie.";
+      }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {/* TYPE */}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <select name="type" value={form.type || ""} onChange={handleChange}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <option value="">-- Type --</option>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {types.map((t) => (
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <option key={t.id} value={t.id}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      {t.name}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </option>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ))}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </select>
+      const phoneError = validatePhoneNumber(form.phone);
+      if (phoneError) {
+        nextErrors.phone = phoneError;
+      }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input name="latitude" value={form.latitude || ""} onChange={handleChange} placeholder="Latitude" />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input name="longitude" value={form.longitude || ""} onChange={handleChange} placeholder="Longitude" />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input name="address" value={form.address || ""} onChange={handleChange} placeholder="Adresse" />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input name="phone" value={form.phone || ""} onChange={handleChange} placeholder="Téléphone" />
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input name="opening_hours" value={form.opening_hours || ""} onChange={handleChange} placeholder="Horaires" />
+      const lat = Number.parseFloat(form.latitude);
+      const lng = Number.parseFloat(form.longitude);
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <button onClick={handleUpdate} style={{ flex: 1 }}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          💾 Sauvegarder
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </button>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <button onClick={onClose} style={{ flex: 1 }}>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ❌ Fermer
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </button>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        if (Number.isNaN(lat)) {
+          nextErrors.latitude = "Latitude invalide.";
+        }
+
+        if (Number.isNaN(lng)) {
+          nextErrors.longitude = "Longitude invalide.";
+        }
+      }
+
+      setErrors(nextErrors);
+
+      if (Object.keys(nextErrors).length > 0) {
+        addToast("❌ Corrigez les erreurs du formulaire", "error");
+        return;
+      }
+
+      if (isDuplicate && isDuplicate(lat, lng, commerce.id)) {
+        addToast("❌ Commerce déjà à proximité", "error");
+        return;
+      }
+
+      const response = await fetch(`${API}/commerces/${commerce.id}/update/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          category: Number.parseInt(form.category, 10),
+          type: Number.parseInt(form.type, 10),
+          latitude: lat,
+          longitude: lng,
+          address: form.address,
+          phone: normalizePhoneNumber(form.phone),
+          opening_hours: form.opening_hours,
+        }),
+      });
+
+      let result = {};
+      try {
+        result = await response.json();
+      } catch {
+        result = {};
+      }
+
+      if (!response.ok) {
+        addToast(`❌ ${JSON.stringify(result)}`, "error");
+        return;
+      }
+
+      addToast("✅ Commerce modifié", "success");
+      onUpdated();
+      onClose();
+    } catch (error) {
+      console.error(error);
+      addToast("❌ Erreur réseau", "error");
+    }
+  };
+
+  return (
+    <div style={overlay}>
+      <div style={modal}>
+        <h2>✏️ Modifier Commerce</h2>
+
+        <input name="name" value={form.name} onChange={handleChange} placeholder="Nom" />
+        {errors.name && <div style={errorText}>{errors.name}</div>}
+        <input
+          name="description"
+          value={form.description}
+          onChange={handleChange}
+          placeholder="Description"
+        />
+
+        <select name="category" value={form.category} onChange={handleChange}>
+          <option value="">-- Catégorie --</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+        {errors.category && <div style={errorText}>{errors.category}</div>}
+
+        <select name="type" value={form.type} onChange={handleChange}>
+          <option value="">-- Type --</option>
+          {availableTypes.map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.name}
+            </option>
+          ))}
+        </select>
+        {errors.type && <div style={errorText}>{errors.type}</div>}
+
+        <input
+          name="latitude"
+          value={form.latitude}
+          onChange={handleChange}
+          placeholder="Latitude"
+        />
+        {errors.latitude && <div style={errorText}>{errors.latitude}</div>}
+        <input
+          name="longitude"
+          value={form.longitude}
+          onChange={handleChange}
+          placeholder="Longitude"
+        />
+        {errors.longitude && <div style={errorText}>{errors.longitude}</div>}
+        <input name="address" value={form.address} onChange={handleChange} placeholder="Adresse" />
+        <input name="phone" value={form.phone} onChange={handleChange} placeholder="Téléphone" />
+        {errors.phone && <div style={errorText}>{errors.phone}</div>}
+        <input
+          name="opening_hours"
+          value={form.opening_hours}
+          onChange={handleChange}
+          placeholder="Horaires"
+        />
+
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+          <button onClick={handleUpdate} style={{ flex: 1 }}>
+            💾 Sauvegarder
+          </button>
+          <button onClick={onClose} style={{ flex: 1 }}>
+            ❌ Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const overlay = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  background: "rgba(0,0,0,0.5)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+};
+
+const modal = {
+  background: "#fff",
+  padding: 20,
+  borderRadius: 10,
+  width: 320,
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
+
+const errorText = {
+  color: "#b00020",
+  fontSize: 12,
+  marginTop: -6,
+};
