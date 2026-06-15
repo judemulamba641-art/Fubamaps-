@@ -37,22 +37,6 @@ def is_within_radius(user_lat, user_lon, target_lat, target_lon, radius_km=5):
 
 
 # =========================================================
-# ⭐ NOTES / AVIS
-# =========================================================
-
-
-def calculate_average_rating(reviews):
-    """
-    Calcule la moyenne des notes
-    """
-    if not reviews:
-        return 0
-
-    total = sum([r.note for r in reviews])
-    return round(total / len(reviews), 2)
-
-
-# =========================================================
 # 🔤 STRING UTILS
 # =========================================================
 
@@ -124,26 +108,5 @@ def chunk_queryset(queryset, chunk_size=100):
         start += chunk_size
 
 
-# =========================================================
-# 🔐 VALIDATION SIMPLE
-# =========================================================
-
-
-def validate_latitude(latitude):
-    return -90 <= latitude <= 90
-
-
-def validate_longitude(longitude):
-    return -180 <= longitude <= 180
-
-
-# =========================================================
-# 📱 MOBILE OPTIMIZATION
-# =========================================================
-
-
-def compress_response(data, limit=50):
-    """
-    Limite les données envoyées pour mobile faible connexion
-    """
-    return data[:limit]
+# validate_latitude, validate_longitude -> apps.core.validators
+# compress_response -> apps.commerces.services.limit_results

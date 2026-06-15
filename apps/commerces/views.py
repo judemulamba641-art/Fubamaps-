@@ -19,6 +19,18 @@ from .services import (
     get_nearby_commerces,
 )
 
+
+def parse_geo_params(request):
+    """Extract common geo/filter query params from a request."""
+    return {
+        "lat": request.GET.get("lat"),
+        "lng": request.GET.get("lng"),
+        "radius": float(request.GET.get("radius", 5)),
+        "category": request.GET.get("category"),
+        "type_id": request.GET.get("type"),
+    }
+
+
 # =========================================================
 # 📍 COMMERCE LIST + FILTER
 # =========================================================
@@ -31,43 +43,20 @@ class CommerceListView(APIView):
     """
 
     def get(self, request):
-        lat = request.GET.get("lat")
-        lng = request.GET.get("lng")
-        radius = request.GET.get("radius", 5)
-
-        category = request.GET.get("category")
-        type_id = request.GET.get("type")
-
+        geo = parse_geo_params(request)
         sort_by = request.GET.get("sort", "smart")
 
-        # 📍 Recherche géolocalisée
-        if lat and lng:
+        if geo["lat"] and geo["lng"]:
             commerces = get_nearby_commerces(
-                user_lat=float(lat),
-                user_lon=float(lng),
-                radius_km=float(radius),
-                category_id=category,
-                type_id=type_id,
+                user_lat=float(geo["lat"]),
+                user_lon=float(geo["lng"]),
+                radius_km=geo["radius"],
+                category_id=geo["category"],
+                type_id=geo["type_id"],
                 sort_by=sort_by,
             )
-
-            # 🔥 retire les commerces supprimés
-            commerces = [
-                commerce
-                for commerce in commerces
-                if not commerce.is_deleted
-            ]
-
         else:
-            # 📍 Liste simple
-            commerces = (
-                Commerce.objects
-                .filter(
-                    is_active=True,
-                    is_deleted=False
-                )
-                .select_related("category", "type")
-            )
+            commerces = Commerce.objects.active_with_relations()
 
         serializer = CommerceSerializer(
             commerces,
@@ -179,36 +168,21 @@ class NearbyCommerceView(APIView):
     """
 
     def get(self, request):
-        lat = request.GET.get("lat")
-        lng = request.GET.get("lng")
+        geo = parse_geo_params(request)
 
-        if not lat or not lng:
+        if not geo["lat"] or not geo["lng"]:
             return Response(
                 {"error": "lat et lng requis"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        radius = float(
-            request.GET.get("radius", 5)
-        )
-
-        category = request.GET.get("category")
-        type_id = request.GET.get("type")
-
         commerces = get_nearby_commerces(
-            user_lat=float(lat),
-            user_lon=float(lng),
-            radius_km=radius,
-            category_id=category,
-            type_id=type_id,
+            user_lat=float(geo["lat"]),
+            user_lon=float(geo["lng"]),
+            radius_km=geo["radius"],
+            category_id=geo["category"],
+            type_id=geo["type_id"],
         )
-
-        # 🔥 retire les commerces supprimés
-        commerces = [
-            commerce
-            for commerce in commerces
-            if not commerce.is_deleted
-        ]
 
         serializer = CommerceSerializer(
             commerces,
@@ -229,10 +203,7 @@ class CommerceMapView(APIView):
     """
 
     def get(self, request):
-        commerces = (
-            Commerce.objects.filter(is_active=True, is_deleted=False)
-            .select_related("category", "type")
-        )
+        commerces = Commerce.objects.active_with_relations()
 
         serializer = CommerceMapSerializer(
             commerces,
@@ -253,12 +224,7 @@ class CommerceByCategoryView(APIView):
     """
 
     def get(self, request):
-        commerces = (
-            Commerce.objects.filter(
-                is_active=True,
-                is_deleted=False
-            ).select_related("category", "type")
-        )
+        commerces = Commerce.objects.active_with_relations()
 
         serializer = CommerceByCategorySerializer(
             commerces,

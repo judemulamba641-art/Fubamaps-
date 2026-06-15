@@ -1,21 +1,15 @@
-import re
-
 from django.core.exceptions import ValidationError
 from django.db import models
 from apps.core.models import BaseModel
+from apps.core.validators import validate_phone_number
 
 
-PHONE_PATTERN = re.compile(r"^(\+243\d{9}|243\d{9}|0\d{9})$")
+class CommerceManager(models.Manager):
+    def active(self):
+        return self.filter(is_active=True, is_deleted=False)
 
-
-def validate_phone_number(value):
-    if value in (None, ""):
-        return
-
-    if not PHONE_PATTERN.match(value):
-        raise ValidationError(
-            "Le numéro doit être au format +243XXXXXXXXX, 243XXXXXXXXX ou 0XXXXXXXXX."
-        )
+    def active_with_relations(self):
+        return self.active().select_related("category", "type")
 
 # =========================================================
 # 🏷️ CATÉGORIES (ex: Restaurant, Boutique, Pharmacie)
@@ -97,6 +91,8 @@ class Commerce(BaseModel):
 
     # 🕒 Horaires simples
     opening_hours = models.CharField(max_length=255, blank=True, null=True)
+
+    objects = CommerceManager()
 
     class Meta:
         verbose_name = "Commerce"
