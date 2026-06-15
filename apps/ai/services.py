@@ -1,7 +1,8 @@
+import logging
 import os
-from openai import OpenAI
 
-from apps.avis.models import Avis
+from openai import OpenAI, OpenAIError
+
 from .prompts import (
     SYSTEM_PROMPT,
     build_recommendation_prompt,
@@ -12,11 +13,17 @@ from .prompts import (
     detect_intent,
 )
 
+logger = logging.getLogger(__name__)
+
 # =========================================================
 # 🔐 INIT OPENAI
 # =========================================================
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+_api_key = os.getenv("OPENAI_API_KEY")
+if not _api_key:
+    logger.warning("OPENAI_API_KEY is not set — AI features will be unavailable.")
+
+client = OpenAI(api_key=_api_key) if _api_key else None
 
 
 # =========================================================
@@ -43,7 +50,7 @@ def prepare_commerce_data(commerces):
                 "comment": (
                     review.commentaire[:120]
                     if review and review.commentaire
-                    else "Pas d’avis"
+                    else "Pas d'avis"
                 ),
             }
         )
@@ -58,8 +65,13 @@ def prepare_commerce_data(commerces):
 
 def call_openai(prompt, temperature=0.6, max_tokens=180):
     """
-    Appel sécurisé et optimisé à OpenAI
+    Appel sécurisé et optimisé à OpenAI.
+    Raises OpenAIError on failure so callers can decide how to handle it.
     """
+
+    if not _api_key or client is None:
+        logger.error("OpenAI call attempted without a configured API key.")
+        raise OpenAIError("OPENAI_API_KEY is not configured.")
 
     try:
         response = client.chat.completions.create(
@@ -74,8 +86,9 @@ def call_openai(prompt, temperature=0.6, max_tokens=180):
 
         return response.choices[0].message.content.strip()
 
-    except Exception:
-        return "Je n'arrive pas à répondre pour le moment. Réessaie dans quelques instants."
+    except OpenAIError:
+        logger.exception("OpenAI API call failed.")
+        raise
 
 
 # =========================================================
@@ -85,18 +98,16 @@ def call_openai(prompt, temperature=0.6, max_tokens=180):
 
 def generate_ai_response(user_message, commerces=None, context=None):
     """
-    Fonction principale utilisée par ton API
+    Fonction principale utilisée par ton API.
 
-    - détecte l’intention
-    - choisit le bon prompt
-    - appelle OpenAI
+    Returns the AI response string, or a fallback message if the AI service
+    is unavailable.
     """
 
     intent = detect_intent(user_message)
 
     commerces_data = prepare_commerce_data(commerces) if commerces else None
 
-    # 🎯 ROUTAGE INTELLIGENT
     if intent == "recommendation":
         prompt = build_recommendation_prompt(commerces_data)
 
@@ -110,12 +121,14 @@ def generate_ai_response(user_message, commerces=None, context=None):
         prompt = build_app_guide_prompt(user_message)
 
     else:
-        # 💬 conversation naturelle
         prompt = build_chat_prompt(
             user_message=user_message, commerces_data=commerces_data, context=context
         )
 
-    return call_openai(prompt)
+    try:
+        return call_openai(prompt)
+    except OpenAIError:
+        return "Je n'arrive pas à répondre pour le moment. Réessaie dans quelques instants."
 
 
 # =========================================================
@@ -125,7 +138,8 @@ def generate_ai_response(user_message, commerces=None, context=None):
 
 def get_ai_recommendation(commerces):
     """
-    Version simple (endpoint rapide)
+    Version simple (endpoint rapide).
+    Returns a fallback message when the AI service is unavailable.
     """
 
     if not commerces:
@@ -134,7 +148,10 @@ def get_ai_recommendation(commerces):
     commerces_data = prepare_commerce_data(commerces)
     prompt = build_recommendation_prompt(commerces_data)
 
-    return call_openai(prompt, temperature=0.5, max_tokens=120)
+    try:
+        return call_openai(prompt, temperature=0.5, max_tokens=120)
+    except OpenAIError:
+        return "Je n'arrive pas à répondre pour le moment. Réessaie dans quelques instants."
 
 
 # =========================================================
@@ -144,22 +161,24 @@ def get_ai_recommendation(commerces):
 
 def generate_chat_response(user_message, commerces=None, previous_messages=None):
     """
-    Permet une vraie conversation type ChatGPT
+    Permet une vraie conversation type ChatGPT.
+    Returns a fallback message when the AI service is unavailable.
     """
+
+    if not _api_key or client is None:
+        logger.error("Chat response attempted without a configured API key.")
+        return "Je rencontre un problème pour répondre. Réessaie."
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-    # historique conversation
     if previous_messages:
         messages.extend(previous_messages)
 
-    # ajout contexte commerces
     if commerces:
         commerces_data = prepare_commerce_data(commerces)
         context_text = f"Commerces disponibles: {commerces_data}"
         messages.append({"role": "system", "content": context_text})
 
-    # message utilisateur
     messages.append({"role": "user", "content": user_message})
 
     try:
@@ -172,5 +191,6 @@ def generate_chat_response(user_message, commerces=None, previous_messages=None)
 
         return response.choices[0].message.content.strip()
 
-    except Exception:
+    except OpenAIError:
+        logger.exception("OpenAI chat completion failed.")
         return "Je rencontre un problème pour répondre. Réessaie."

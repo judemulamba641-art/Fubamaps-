@@ -1,6 +1,10 @@
+import logging
+
 from django.db.models import Avg
 from .models import Commerce
 from apps.core.utils import haversine_distance
+
+logger = logging.getLogger(__name__)
 
 # =========================================================
 # 📍 CALCUL DISTANCE + ENRICHISSEMENT
@@ -9,10 +13,20 @@ from apps.core.utils import haversine_distance
 
 def add_distance_to_commerces(commerces, user_lat, user_lon):
     """
-    Ajoute la distance à chaque commerce (attribut dynamique)
+    Ajoute la distance à chaque commerce (attribut dynamique).
+    Skips commerces with missing/invalid coordinates and logs a warning.
     """
 
     for commerce in commerces:
+        if commerce.latitude is None or commerce.longitude is None:
+            logger.warning(
+                "Commerce %s (id=%s) has missing coordinates, skipping distance.",
+                commerce.name,
+                commerce.id,
+            )
+            commerce.distance = float("inf")
+            continue
+
         distance = haversine_distance(
             user_lat, user_lon, commerce.latitude, commerce.longitude
         )
@@ -43,7 +57,13 @@ def filter_by_category(commerces, category_id):
     if not category_id:
         return commerces
 
-    return [c for c in commerces if c.category_id == int(category_id)]
+    try:
+        cid = int(category_id)
+    except (ValueError, TypeError):
+        logger.warning("Invalid category_id=%r, ignoring filter.", category_id)
+        return commerces
+
+    return [c for c in commerces if c.category_id == cid]
 
 
 # =========================================================
@@ -55,7 +75,13 @@ def filter_by_type(commerces, type_id):
     if not type_id:
         return commerces
 
-    return [c for c in commerces if c.type_id == int(type_id)]
+    try:
+        tid = int(type_id)
+    except (ValueError, TypeError):
+        logger.warning("Invalid type_id=%r, ignoring filter.", type_id)
+        return commerces
+
+    return [c for c in commerces if c.type_id == tid]
 
 
 # =========================================================

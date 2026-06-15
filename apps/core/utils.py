@@ -1,6 +1,9 @@
+import logging
 import math
 from datetime import datetime
 from django.utils.text import slugify
+
+logger = logging.getLogger(__name__)
 
 # =========================================================
 # 📍 GEOLOCATION (TRÈS IMPORTANT POUR FUBAMAPS)
@@ -9,12 +12,30 @@ from django.utils.text import slugify
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
-    Calcule la distance en KM entre deux points GPS
+    Calcule la distance en KM entre deux points GPS.
+    Raises TypeError if any coordinate is not a valid number.
+    Raises ValueError if coordinates are out of valid GPS range.
     """
+
+    coords = [lat1, lon1, lat2, lon2]
+    for i, val in enumerate(coords):
+        if not isinstance(val, (int, float)):
+            raise TypeError(
+                f"Coordinate at position {i} must be a number, got {type(val).__name__}."
+            )
+
+    if not (-90 <= lat1 <= 90) or not (-90 <= lat2 <= 90):
+        raise ValueError(
+            f"Latitudes must be between -90 and 90 (got lat1={lat1}, lat2={lat2})."
+        )
+    if not (-180 <= lon1 <= 180) or not (-180 <= lon2 <= 180):
+        raise ValueError(
+            f"Longitudes must be between -180 and 180 (got lon1={lon1}, lon2={lon2})."
+        )
 
     R = 6371  # Rayon de la Terre en km
 
-    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    lat1, lon1, lat2, lon2 = map(math.radians, coords)
 
     dlat = lat2 - lat1
     dlon = lon2 - lon1
