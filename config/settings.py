@@ -108,7 +108,7 @@ REST_FRAMEWORK = {
 }
 
 # 🔐 JWT
-from datetime import timedelta
+from datetime import timedelta  # noqa: E402
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
@@ -118,7 +118,6 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# Custom user model
 AUTH_USER_MODEL = "users.User"
 
 # 🌐 CORS
@@ -144,6 +143,10 @@ SESSION_COOKIE_SAMESITE = "Lax"
 
 CSRF_COOKIE_DOMAIN = None
 SESSION_COOKIE_DOMAIN = None
+
+# 📂 Media
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # 🔑 Default field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

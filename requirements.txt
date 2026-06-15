@@ -10,6 +10,11 @@ djangorestframework
 django-cors-headers
 
 # ==============================
+# 🔐 JWT AUTH
+# ==============================
+djangorestframework-simplejwt>=5.3
+
+# ==============================
 # 🔐 ENV VARIABLES
 # ==============================
 python-dotenv

@@ -16,6 +16,4 @@ urlpatterns = [
     path("api/users/", include("apps.users.urls")),
     path("api/commerces/", include("apps.commerces.urls")),
     path("api/avis/", include("apps.avis.urls")),
-    # (optionnel plus tard)
-    # path('api/ai/', include('apps.ai.urls')),
 ]
