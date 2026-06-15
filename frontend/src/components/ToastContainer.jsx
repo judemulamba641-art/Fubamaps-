@@ -1,46 +1,51 @@
+/**
+ * Container de notifications toast (position fixe en haut a droite).
+ */
 export default function ToastContainer({ toasts, removeToast }) {
-      return (
-          <div
-                style={{
-                        display: "flex",
-                                flexDirection: "column",
-                                        gap: 10,
-                                                marginTop: 10
-                                                      }}
-                                                          >
-                                                                {toasts.map((toast) => (
-                                                                        <div
-                                                                                  key={toast.id}
-                                                                                            style={{
-                                                                                                        padding: "12px 16px",
-                                                                                                                    borderRadius: 8,
-                                                                                                                                color: "#fff",
-                                                                                                                                            minWidth: 200,
-                                                                                                                                                        background:
-                                                                                                                                                                      toast.type === "success"
-                                                                                                                                                                                      ? "#4CAF50"
-                                                                                                                                                                                                      : toast.type === "error"
-                                                                                                                                                                                                                      ? "#f44336"
-                                                                                                                                                                                                                                      : "#333",
-                                                                                                                                                                                                                                                  boxShadow: "0 4px 10px rgba(0,0,0,0.2)"
-                                                                                                                                                                                                                                                            }}
-                                                                                                                                                                                                                                                                    >
-                                                                                                                                                                                                                                                                              {toast.message}
+  return (
+    <div style={styles.container}>
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          style={{
+            ...styles.toast,
+            background:
+              toast.type === "success"
+                ? "#16a34a"
+                : toast.type === "error"
+                  ? "#dc2626"
+                  : "#334155",
+          }}
+          onClick={() => removeToast(toast.id)}
+        >
+          {toast.message}
+        </div>
+      ))}
+    </div>
+  );
+}
 
-                                                                                                                                                                                                                                                                                        <div
-                                                                                                                                                                                                                                                                                                    style={{
-                                                                                                                                                                                                                                                                                                                  marginTop: 5,
-                                                                                                                                                                                                                                                                                                                                fontSize: 12,
-                                                                                                                                                                                                                                                                                                                                              cursor: "pointer",
-                                                                                                                                                                                                                                                                                                                                                            opacity: 0.7
-                                                                                                                                                                                                                                                                                                                                                                        }}
-                                                                                                                                                                                                                                                                                                                                                                                    onClick={() => removeToast(toast.id)}
-                                                                                                                                                                                                                                                                                                                                                                                              >
-                                                                                                                                                                                                                                                                                                                                                                                                          Fermer
-                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                  ))}
-                                                                                                                                                                                                                                                                                                                                                                                                                                      </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                        );
-                                                                                                                                                                                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                                                                                                                                                                    
+const styles = {
+  container: {
+    position: "fixed",
+    top: 16,
+    right: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    zIndex: 10000,
+    pointerEvents: "none",
+  },
+  toast: {
+    padding: "10px 16px",
+    borderRadius: 10,
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: 500,
+    minWidth: 200,
+    maxWidth: 320,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+    cursor: "pointer",
+    pointerEvents: "auto",
+  },
+};
