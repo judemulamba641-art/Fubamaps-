@@ -1,6 +1,6 @@
-from django.db.models import Avg
 from .models import Commerce
 from apps.core.utils import haversine_distance
+from apps.avis.services import calculate_average_rating
 
 # =========================================================
 # 📍 CALCUL DISTANCE + ENRICHISSEMENT
@@ -105,9 +105,7 @@ def update_commerce_rating(commerce):
     Met à jour la note moyenne depuis les avis
     """
 
-    avg = commerce.avis.aggregate(avg=Avg("note"))["avg"]
-
-    commerce.average_rating = round(avg or 0, 2)
+    commerce.average_rating = round(calculate_average_rating(commerce), 2)
     commerce.save(update_fields=["average_rating"])
 
     return commerce
@@ -137,11 +135,7 @@ def get_nearby_commerces(
     """
 
     # 1️⃣ récupérer (optimisé)
-    commerces = list(
-        Commerce.objects.filter(is_active=True, is_deleted=False).select_related(
-            "category", "type"
-        )
-    )
+    commerces = list(Commerce.objects.active_with_relations())
 
     # 2️⃣ distance
     commerces = add_distance_to_commerces(commerces, user_lat, user_lon)

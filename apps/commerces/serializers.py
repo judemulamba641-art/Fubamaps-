@@ -1,31 +1,7 @@
-import re
-
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from .models import Commerce, Category, CommerceType
-
-
-PHONE_PATTERN = re.compile(r"^(\+243\d{9}|243\d{9}|0\d{9})$")
-
-
-def normalize_phone_number(value):
-    if value in (None, ""):
-        return None
-
-    phone = str(value).strip()
-
-    if not PHONE_PATTERN.match(phone):
-        raise serializers.ValidationError(
-            "Le numéro doit être au format +243XXXXXXXXX, 243XXXXXXXXX ou 0XXXXXXXXX."
-        )
-
-    digits = phone[1:] if phone.startswith("+") else phone
-    if digits.startswith("0"):
-        digits = digits[1:]
-    elif digits.startswith("243"):
-        digits = digits[3:]
-
-    return f"+243{digits}"
+from apps.core.validators import normalize_phone_number, validate_latitude, validate_longitude
 
 
 # =========================================================
@@ -119,12 +95,12 @@ class CommerceCreateUpdateSerializer(serializers.ModelSerializer):
         ]
 
     def validate_latitude(self, value):
-        if not (-90 <= value <= 90):
+        if not validate_latitude(value):
             raise serializers.ValidationError("Latitude invalide")
         return value
 
     def validate_longitude(self, value):
-        if not (-180 <= value <= 180):
+        if not validate_longitude(value):
             raise serializers.ValidationError("Longitude invalide")
         return value
 
