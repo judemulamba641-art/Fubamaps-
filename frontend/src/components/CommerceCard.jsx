@@ -1,45 +1,52 @@
 /**
- * Carte individuelle d'un commerce.
+ * Carte commerce individuelle - FubaMaps.
  */
-export default function CommerceCard({ commerce, onAction }) {
+
+export default function CommerceCard({ commerce, onView, onEdit, onDelete, onReview }) {
+  const stars = (n) => "★".repeat(Math.round(n)) + "☆".repeat(5 - Math.round(n));
+
   return (
-    <div style={styles.card}>
-      <div style={styles.header}>
-        <h3 style={styles.name}>{commerce.name}</h3>
+    <div style={card}>
+      <div style={cardHeader}>
+        <h3 style={nameStyle}>{commerce.name}</h3>
         {commerce.rating > 0 && (
-          <span style={styles.rating}>{commerce.rating.toFixed(1)}/5</span>
+          <span style={ratingStyle}>
+            {stars(commerce.rating)} {commerce.rating.toFixed(1)}
+          </span>
         )}
       </div>
 
-      <div style={styles.meta}>
+      <div style={meta}>
         {commerce.category?.name && (
-          <span style={styles.tag}>{commerce.category.name}</span>
+          <span style={tag}>{commerce.category.name}</span>
         )}
         {commerce.type?.name && (
-          <span style={styles.tagType}>{commerce.type.name}</span>
+          <span style={tag}>{commerce.type.name}</span>
         )}
       </div>
 
-      {commerce.description && (
-        <p style={styles.desc}>{commerce.description}</p>
+      {commerce.address && (
+        <p style={addressText}>{commerce.address}</p>
       )}
 
-      <div style={styles.info}>
-        {commerce.address && <span>{commerce.address}</span>}
-        {commerce.phone && <span>{commerce.phone}</span>}
-      </div>
+      {commerce.description && (
+        <p style={descText}>{commerce.description}</p>
+      )}
 
-      <div style={styles.actions}>
-        <button style={styles.actionBtn} onClick={() => onAction("view", commerce)}>
+      <div style={actions}>
+        <button style={actionBtn} onClick={() => onView(commerce)}>
           Voir
         </button>
-        <button style={styles.actionBtn} onClick={() => onAction("edit", commerce)}>
+        <button style={actionBtn} onClick={() => onEdit(commerce)}>
           Modifier
         </button>
-        <button style={styles.actionBtn} onClick={() => onAction("reviews", commerce)}>
+        <button style={actionBtn} onClick={() => onReview(commerce)}>
           Avis
         </button>
-        <button style={{ ...styles.actionBtn, ...styles.deleteBtn }} onClick={() => onAction("delete", commerce)}>
+        <button
+          style={{ ...actionBtn, color: "#ef4444" }}
+          onClick={() => onDelete(commerce)}
+        >
           Supprimer
         </button>
       </div>
@@ -47,88 +54,75 @@ export default function CommerceCard({ commerce, onAction }) {
   );
 }
 
-const styles = {
-  card: {
-    background: "var(--bg-card, #fff)",
-    border: "1px solid var(--border, #e5e5e5)",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  name: {
-    margin: 0,
-    fontSize: 16,
-    fontWeight: 600,
-    color: "var(--text, #222)",
-  },
-  rating: {
-    background: "#fef3c7",
-    color: "#92400e",
-    padding: "2px 8px",
-    borderRadius: 12,
-    fontSize: 12,
-    fontWeight: 600,
-  },
-  meta: {
-    display: "flex",
-    gap: 6,
-    marginBottom: 8,
-    flexWrap: "wrap",
-  },
-  tag: {
-    background: "var(--accent-bg, #eff6ff)",
-    color: "var(--accent, #2563eb)",
-    padding: "2px 10px",
-    borderRadius: 12,
-    fontSize: 11,
-    fontWeight: 500,
-  },
-  tagType: {
-    background: "#f0fdf4",
-    color: "#166534",
-    padding: "2px 10px",
-    borderRadius: 12,
-    fontSize: 11,
-    fontWeight: 500,
-  },
-  desc: {
-    margin: "0 0 8px",
-    fontSize: 13,
-    color: "var(--text-muted, #666)",
-    lineHeight: 1.4,
-  },
-  info: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
-    fontSize: 12,
-    color: "var(--text-muted, #888)",
-    marginBottom: 10,
-  },
-  actions: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  actionBtn: {
-    padding: "6px 14px",
-    borderRadius: 8,
-    border: "1px solid var(--border, #ddd)",
-    background: "var(--bg-input, #f9f9f9)",
-    color: "var(--text, #333)",
-    fontSize: 12,
-    cursor: "pointer",
-    fontWeight: 500,
-  },
-  deleteBtn: {
-    color: "#dc2626",
-    borderColor: "#fecaca",
-    background: "#fef2f2",
-  },
+const card = {
+  padding: 16,
+  borderRadius: 12,
+  border: "1px solid var(--border, #e5e7eb)",
+  background: "var(--bg-card, #fff)",
+  transition: "box-shadow 0.2s",
+  cursor: "default",
+};
+
+const cardHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 8,
+  marginBottom: 6,
+};
+
+const nameStyle = { margin: 0, fontSize: 16, fontWeight: 700 };
+
+const ratingStyle = {
+  fontSize: 13,
+  color: "#f59e0b",
+  whiteSpace: "nowrap",
+  flexShrink: 0,
+};
+
+const meta = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "wrap",
+  marginBottom: 8,
+};
+
+const tag = {
+  padding: "2px 10px",
+  borderRadius: 12,
+  background: "var(--accent-bg, #eff6ff)",
+  color: "var(--accent, #2563eb)",
+  fontSize: 11,
+  fontWeight: 600,
+};
+
+const addressText = {
+  fontSize: 13,
+  color: "var(--text-muted, #666)",
+  margin: "0 0 4px",
+};
+
+const descText = {
+  fontSize: 13,
+  color: "var(--text-muted, #888)",
+  margin: "0 0 10px",
+  lineHeight: 1.4,
+};
+
+const actions = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "wrap",
+};
+
+const actionBtn = {
+  padding: "6px 14px",
+  borderRadius: 6,
+  border: "1px solid var(--border, #ddd)",
+  background: "transparent",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 600,
+  color: "var(--accent, #2563eb)",
+  transition: "background 0.15s",
 };

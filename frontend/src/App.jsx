@@ -1,461 +1,231 @@
+/**
+ * FubaMaps - Application mono-page style ChatGPT.
+ * Header + Zone centrale dynamique + Prompt de commande.
+ * Routeur de commandes extensible pour future IA.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 
+import { useAuth } from "./store/authStore";
+import { useCommerces } from "./store/commerceStore";
+import { useUI } from "./store/uiStore";
 import { useToast } from "./components/useToast";
-import ToastContainer from "./components/ToastContainer";
 
 import LoginModal from "./components/LoginModal";
-import ChatPrompt from "./components/ChatPrompt";
-import CommerceList from "./components/CommerceList";
-import CommerceCard from "./components/CommerceCard";
-import CommerceModal from "./components/CommerceModal";
-import ReviewModal from "./components/ReviewModal";
-import ReviewList from "./components/ReviewList";
 import SettingsModal from "./components/SettingsModal";
 import ProfileModal from "./components/ProfileModal";
-import ViewCommerceModal from "./components/ViewCommerceModal";
-import DeleteConfirmModal from "./components/DeleteConfirmModal";
+import CommerceModal from "./components/CommerceModal";
+import ReviewModal from "./components/ReviewModal";
+import CommerceList from "./components/CommerceList";
+import ReviewList from "./components/ReviewList";
+import ChatPrompt from "./components/ChatPrompt";
+import ToastContainer from "./components/ToastContainer";
 
-import { useAuthStore } from "./store/authStore";
-import { useCommerceStore } from "./store/commerceStore";
-import { useReviewStore } from "./store/reviewStore";
-import { useUIStore } from "./store/uiStore";
-import { parseCommand } from "./services/aiService";
+import "./App.css";
 
-/**
- * Application principale FubaMaps - Architecture mono-page.
- * Layout inspire de ChatGPT : Header | Zone centrale | Prompt.
- */
-export default function App() {
-  const { addToast, toasts, removeToast } = useToast();
-  const auth = useAuthStore();
-  const commerce = useCommerceStore();
-  const review = useReviewStore();
-  const ui = useUIStore();
+// =========================================================
+// Routeur de commandes (extensible pour future IA)
+// =========================================================
 
-  const [view, setView] = useState("commerces"); // commerces | reviews | search
-  const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState([
-    "mes commerces",
-    "ajouter commerce",
-    "avis",
-    "settings",
-    "profil",
-  ]);
+const COMMAND_ROUTES = [
+  { match: /^settings?$/i, action: "settings" },
+  { match: /^(ajouter|nouveau|créer|creer)\s*(commerce)?$/i, action: "createCommerce" },
+  { match: /^(mes\s+commerces?|liste)$/i, action: "listCommerces" },
+  { match: /^(avis|reviews?)$/i, action: "myReviews" },
+  { match: /^profil$/i, action: "profile" },
+  { match: /^(aide|help)$/i, action: "help" },
+];
 
-  // Load data after authentication
-  useEffect(() => {
-    if (auth.authenticated) {
-      commerce.loadAll().catch(() => addToast("Erreur chargement donnees", "error"));
+function routeCommand(text) {
+  const normalized = text.trim().toLowerCase();
+  for (const route of COMMAND_ROUTES) {
+    if (route.match.test(normalized)) {
+      return route.action;
     }
-  }, [auth.authenticated]);
+  }
+  return "search";
+}
 
-  // Command router (Task 4)
+// =========================================================
+// App principale
+// =========================================================
+
+export default function App() {
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const { loadAll } = useCommerces();
+  const { activeModal, modalData, openModal, closeModal } = useUI();
+  const { toasts, removeToast } = useToast();
+
+  const [view, setView] = useState("commerces");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadAll();
+    }
+  }, [isAuthenticated, loadAll]);
+
   const handleCommand = useCallback(
-    (input) => {
-      const result = parseCommand(input);
+    (text) => {
+      const action = routeCommand(text);
 
-      ui.addMessage({ role: "user", text: input });
-
-      switch (result.action || result.type) {
+      switch (action) {
         case "settings":
-          ui.openModal("settings");
-          ui.addMessage({ role: "system", text: "Ouverture des parametres..." });
+          openModal("settings");
           break;
-
-        case "create_commerce":
-          ui.openModal("create_commerce");
-          ui.addMessage({ role: "system", text: "Formulaire de creation ouvert." });
+        case "createCommerce":
+          openModal("createCommerce");
           break;
-
-        case "list_commerces":
+        case "listCommerces":
           setView("commerces");
           setSearchQuery("");
-          ui.addMessage({ role: "system", text: `${commerce.commerces.length} commerce(s) affiches.` });
           break;
-
-        case "reviews":
+        case "myReviews":
           setView("reviews");
-          review.loadAll().catch(() => addToast("Erreur chargement avis", "error"));
-          ui.addMessage({ role: "system", text: "Chargement des avis..." });
           break;
-
         case "profile":
-          ui.openModal("profile");
-          ui.addMessage({ role: "system", text: "Votre profil." });
+          openModal("profile");
           break;
-
-        case "logout":
-          auth.doLogout();
-          ui.addMessage({ role: "system", text: "Deconnexion..." });
-          break;
-
         case "help":
-          ui.addMessage({
-            role: "system",
-            text: "Commandes disponibles: mes commerces, ajouter commerce, avis, settings, profil, deconnexion",
-          });
-          setSuggestions([
-            "mes commerces",
-            "ajouter commerce",
-            "avis",
-            "settings",
-            "profil",
-          ]);
+          setView("help");
           break;
-
-        case "dark_mode":
-          ui.setTheme("dark");
-          ui.addMessage({ role: "system", text: "Theme sombre active." });
-          break;
-
-        case "light_mode":
-          ui.setTheme("light");
-          ui.addMessage({ role: "system", text: "Theme clair active." });
-          break;
-
         case "search":
-          setView("commerces");
-          setSearchQuery(result.query);
-          ui.addMessage({ role: "system", text: `Recherche: "${result.query}"` });
-          break;
-
         default:
-          // Unknown command - treat as search
           setView("commerces");
-          setSearchQuery(input);
-          ui.addMessage({
-            role: "system",
-            text: `Recherche de "${input}"... Commandes: settings, ajouter commerce, mes commerces, avis, profil`,
-          });
+          setSearchQuery(text);
           break;
       }
     },
-    [commerce.commerces.length, auth, ui, review, addToast]
+    [openModal]
   );
 
-  // Commerce actions handler
-  const handleCommerceAction = useCallback(
-    (action, data) => {
-      switch (action) {
-        case "view":
-          ui.openModal("view_commerce", data);
-          break;
-        case "edit":
-          ui.openModal("edit_commerce", data);
-          break;
-        case "delete":
-          ui.openModal("delete_commerce", data);
-          break;
-        case "reviews":
-          ui.openModal("reviews", data);
-          break;
-        case "create_commerce":
-          ui.openModal("create_commerce");
-          break;
-        default:
-          break;
-      }
-    },
-    [ui]
-  );
-
-  // Show loading
-  if (auth.loading) {
+  if (authLoading) {
     return (
-      <div style={styles.loading}>
-        <h2 style={{ color: "var(--accent, #2563eb)" }}>FubaMaps</h2>
+      <div className="fm-loading">
+        <h1 className="fm-logo-text">FubaMaps</h1>
         <p>Chargement...</p>
       </div>
     );
   }
 
-  // Show login modal if not authenticated (Task 2)
-  if (!auth.authenticated) {
+  if (!isAuthenticated) {
     return (
       <>
-        <LoginModal onLogin={auth.doLogin} onRegister={auth.doRegister} />
+        <LoginModal />
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </>
     );
   }
 
   return (
-    <div style={styles.app}>
-      {/* HEADER */}
-      <header style={styles.header}>
-        <div style={styles.headerLeft}>
-          <h1 style={styles.logo} onClick={() => { setView("commerces"); setSearchQuery(""); }}>
+    <div className="fm-app">
+      {/* ===== HEADER ===== */}
+      <header className="fm-header">
+        <div className="fm-header-left">
+          <h1
+            className="fm-logo"
+            onClick={() => {
+              setView("commerces");
+              setSearchQuery("");
+            }}
+          >
             FubaMaps
           </h1>
         </div>
-        <div style={styles.headerRight}>
+        <div className="fm-header-right">
           <button
-            style={styles.headerBtn}
-            onClick={() => ui.openModal("settings")}
-            title="Parametres"
+            className="fm-header-btn"
+            onClick={() => openModal("settings")}
+            title="Settings"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
           <button
-            style={styles.profileBtn}
-            onClick={() => ui.openModal("profile")}
+            className="fm-header-btn fm-avatar-btn"
+            onClick={() => openModal("profile")}
             title="Profil"
           >
-            {auth.user?.first_name?.[0]?.toUpperCase() || "U"}
+            {user?.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
           </button>
         </div>
       </header>
 
-      {/* ZONE CENTRALE */}
-      <main style={styles.main}>
-        <div style={styles.content}>
-          {/* Navigation tabs */}
-          <div style={styles.viewTabs}>
-            <button
-              style={view === "commerces" ? styles.viewTabActive : styles.viewTab}
-              onClick={() => { setView("commerces"); setSearchQuery(""); }}
-            >
-              Commerces ({commerce.commerces.length})
-            </button>
-            <button
-              style={view === "reviews" ? styles.viewTabActive : styles.viewTab}
-              onClick={() => {
-                setView("reviews");
-                review.loadAll().catch(() => {});
-              }}
-            >
-              Avis
-            </button>
-            <button style={styles.viewTab} onClick={() => ui.openModal("create_commerce")}>
-              + Ajouter
-            </button>
-          </div>
-
-          {/* Messages history */}
-          {ui.messages.length > 0 && (
-            <div style={styles.messages}>
-              {ui.messages.slice(-5).map((m) => (
-                <div
-                  key={m.id}
-                  style={m.role === "user" ? styles.msgUser : styles.msgSystem}
-                >
-                  {m.text}
-                </div>
-              ))}
+      {/* ===== ZONE CENTRALE ===== */}
+      <main className="fm-main">
+        <div className="fm-content">
+          {view === "commerces" && <CommerceList searchQuery={searchQuery} />}
+          {view === "reviews" && <ReviewList />}
+          {view === "help" && (
+            <div className="fm-help">
+              <h2>Commandes disponibles</h2>
+              <ul>
+                <li><strong>settings</strong> — Ouvrir les paramètres</li>
+                <li><strong>ajouter commerce</strong> — Créer un nouveau commerce</li>
+                <li><strong>mes commerces</strong> — Afficher la liste des commerces</li>
+                <li><strong>avis</strong> — Voir mes avis</li>
+                <li><strong>profil</strong> — Voir mon profil</li>
+                <li><strong>aide</strong> — Afficher cette aide</li>
+                <li><em>Autre texte</em> — Rechercher dans les commerces</li>
+              </ul>
+              <p className="fm-help-note">
+                Architecture extensible : les futures commandes IA seront intégrées ici.
+              </p>
             </div>
-          )}
-
-          {/* Main content area */}
-          {view === "commerces" && (
-            <CommerceList
-              commerces={commerce.commerces}
-              onAction={handleCommerceAction}
-              searchQuery={searchQuery}
-            />
-          )}
-
-          {view === "reviews" && (
-            <ReviewList
-              reviews={review.reviews}
-              onSelectCommerce={(c) => ui.openModal("reviews", c)}
-            />
           )}
         </div>
       </main>
 
-      {/* PROMPT (Task 3 & 4) */}
-      <ChatPrompt onSubmit={handleCommand} suggestions={suggestions} />
+      {/* ===== PROMPT CHATGPT-STYLE ===== */}
+      <ChatPrompt onCommand={handleCommand} />
 
-      {/* MODALS */}
-      {ui.activeModal === "settings" && (
-        <SettingsModal
-          user={auth.user}
-          onClose={ui.closeModal}
-          onLogout={async () => { await auth.doLogout(); ui.closeModal(); }}
-          theme={ui.theme}
-          onThemeChange={ui.setTheme}
-          onRefreshUser={auth.refreshUser}
-        />
+      {/* ===== MODALES ===== */}
+      {activeModal === "settings" && (
+        <SettingsModal onClose={closeModal} />
+      )}
+      {activeModal === "profile" && (
+        <ProfileModal onClose={closeModal} />
+      )}
+      {activeModal === "createCommerce" && (
+        <CommerceModal mode="create" onClose={closeModal} />
+      )}
+      {activeModal === "editCommerce" && modalData && (
+        <CommerceModal mode="edit" commerce={modalData} onClose={closeModal} />
+      )}
+      {activeModal === "deleteCommerce" && modalData && (
+        <CommerceModal mode="delete" commerce={modalData} onClose={closeModal} />
+      )}
+      {activeModal === "viewCommerce" && modalData && (
+        <div className="fm-modal-overlay" onClick={closeModal}>
+          <div className="fm-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="fm-modal-header">
+              <h2>Détails du commerce</h2>
+              <button className="fm-modal-close" onClick={closeModal}>&times;</button>
+            </div>
+            <div className="fm-modal-body">
+              <p><strong>Nom :</strong> {modalData.name}</p>
+              <p><strong>Description :</strong> {modalData.description || "—"}</p>
+              <p><strong>Catégorie :</strong> {modalData.category?.name || "—"}</p>
+              <p><strong>Type :</strong> {modalData.type?.name || "—"}</p>
+              <p><strong>Adresse :</strong> {modalData.address || "—"}</p>
+              <p><strong>Téléphone :</strong> {modalData.phone || "—"}</p>
+              <p><strong>Horaires :</strong> {modalData.opening_hours || "—"}</p>
+              <p><strong>Latitude :</strong> {modalData.latitude}</p>
+              <p><strong>Longitude :</strong> {modalData.longitude}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {activeModal === "review" && modalData && (
+        <ReviewModal commerce={modalData} onClose={closeModal} />
       )}
 
-      {ui.activeModal === "profile" && (
-        <ProfileModal user={auth.user} onClose={ui.closeModal} />
-      )}
-
-      {ui.activeModal === "create_commerce" && (
-        <CommerceModal
-          mode="create"
-          categories={commerce.categories}
-          types={commerce.types}
-          onClose={ui.closeModal}
-          onSuccess={() => commerce.loadAll()}
-          addToast={addToast}
-        />
-      )}
-
-      {ui.activeModal === "edit_commerce" && ui.modalData && (
-        <CommerceModal
-          mode="edit"
-          commerce={ui.modalData}
-          categories={commerce.categories}
-          types={commerce.types}
-          onClose={ui.closeModal}
-          onSuccess={() => commerce.loadAll()}
-          addToast={addToast}
-        />
-      )}
-
-      {ui.activeModal === "view_commerce" && ui.modalData && (
-        <ViewCommerceModal
-          commerce={ui.modalData}
-          onClose={ui.closeModal}
-        />
-      )}
-
-      {ui.activeModal === "delete_commerce" && ui.modalData && (
-        <DeleteConfirmModal
-          commerce={ui.modalData}
-          onClose={ui.closeModal}
-          onDeleteSuccess={(id) => {
-            commerce.removeCommerce(id);
-            ui.closeModal();
-          }}
-          addToast={addToast}
-        />
-      )}
-
-      {ui.activeModal === "reviews" && ui.modalData && (
-        <ReviewModal
-          commerce={ui.modalData}
-          onClose={ui.closeModal}
-          addToast={addToast}
-        />
-      )}
-
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      {/* ===== TOASTS ===== */}
+      <div className="fm-toasts">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+      </div>
     </div>
   );
 }
-
-const styles = {
-  app: {
-    display: "flex",
-    flexDirection: "column",
-    height: "100vh",
-    background: "var(--bg, #f8fafc)",
-    color: "var(--text, #222)",
-  },
-  loading: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100vh",
-    background: "var(--bg, #f8fafc)",
-    color: "var(--text, #222)",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "12px 20px",
-    background: "var(--bg-card, #fff)",
-    borderBottom: "1px solid var(--border, #e5e5e5)",
-    position: "sticky",
-    top: 0,
-    zIndex: 50,
-  },
-  headerLeft: { display: "flex", alignItems: "center", gap: 12 },
-  headerRight: { display: "flex", alignItems: "center", gap: 10 },
-  logo: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 800,
-    color: "var(--accent, #2563eb)",
-    cursor: "pointer",
-  },
-  headerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    border: "1px solid var(--border, #e5e5e5)",
-    background: "var(--bg-input, #f9f9f9)",
-    color: "var(--text, #555)",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: "50%",
-    border: "none",
-    background: "var(--accent, #2563eb)",
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: 14,
-    cursor: "pointer",
-  },
-  main: {
-    flex: 1,
-    overflow: "auto",
-    paddingBottom: 100,
-  },
-  content: {
-    maxWidth: 680,
-    margin: "0 auto",
-    padding: "16px 16px 0",
-  },
-  viewTabs: {
-    display: "flex",
-    gap: 8,
-    marginBottom: 16,
-    flexWrap: "wrap",
-  },
-  viewTab: {
-    padding: "8px 16px",
-    borderRadius: 20,
-    border: "1px solid var(--border, #ddd)",
-    background: "var(--bg-input, #f5f5f5)",
-    color: "var(--text, #555)",
-    fontSize: 13,
-    cursor: "pointer",
-    fontWeight: 500,
-  },
-  viewTabActive: {
-    padding: "8px 16px",
-    borderRadius: 20,
-    border: "1px solid var(--accent, #2563eb)",
-    background: "var(--accent, #2563eb)",
-    color: "#fff",
-    fontSize: 13,
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  messages: {
-    marginBottom: 16,
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
-  msgUser: {
-    alignSelf: "flex-end",
-    background: "var(--accent, #2563eb)",
-    color: "#fff",
-    padding: "8px 14px",
-    borderRadius: "16px 16px 4px 16px",
-    fontSize: 13,
-    maxWidth: "80%",
-  },
-  msgSystem: {
-    alignSelf: "flex-start",
-    background: "var(--bg-card, #fff)",
-    color: "var(--text, #333)",
-    padding: "8px 14px",
-    borderRadius: "16px 16px 16px 4px",
-    fontSize: 13,
-    maxWidth: "80%",
-    border: "1px solid var(--border, #e5e5e5)",
-  },
-};

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from apps.commerces.models import Commerce
 from apps.core.models import TimeStampedModel
@@ -45,7 +46,16 @@ class Avis(TimeStampedModel):
     # 📝 Commentaire
     commentaire = models.TextField(blank=True)
 
-    # 👤 Infos utilisateur (simple V1)
+    # 👤 Utilisateur authentifié
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="avis",
+        null=True,
+        blank=True,
+    )
+
+    # 👤 Infos utilisateur (fallback V1)
     user_name = models.CharField(max_length=100, blank=True)
 
     # 👍 Engagement (préparer futur)

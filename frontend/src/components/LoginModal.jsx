@@ -1,16 +1,21 @@
-import { useState } from "react";
-
 /**
- * Modal obligatoire d'authentification (Connexion + Inscription).
- * Bloque l'acces a l'application tant que l'utilisateur n'est pas connecte.
+ * Modal d'authentification obligatoire - FubaMaps.
+ * Onglets Connexion / Inscription. Bloque l'accès sans auth.
  */
-export default function LoginModal({ onLogin, onRegister }) {
+
+import { useState } from "react";
+import { useAuth } from "../store/authStore";
+import { useToast } from "./useToast";
+
+export default function LoginModal() {
+  const { login, register } = useAuth();
+  const { addToast } = useToast();
+
   const [tab, setTab] = useState("login");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [registerForm, setRegisterForm] = useState({
+  const [regForm, setRegForm] = useState({
     first_name: "",
     last_name: "",
     email: "",
@@ -20,14 +25,13 @@ export default function LoginModal({ onLogin, onRegister }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
+    if (loading) return;
     setLoading(true);
     try {
-      await onLogin(loginForm.email, loginForm.password);
+      await login(loginForm.email, loginForm.password);
+      addToast("Connexion réussie", "success");
     } catch (err) {
-      const msg =
-        err?.detail || err?.email?.[0] || err?.password?.[0] || "Erreur de connexion";
-      setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+      addToast(err.message || "Erreur connexion", "error");
     } finally {
       setLoading(false);
     }
@@ -35,116 +39,125 @@ export default function LoginModal({ onLogin, onRegister }) {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setError("");
-
-    if (registerForm.password !== registerForm.password_confirm) {
-      setError("Les mots de passe ne correspondent pas.");
+    if (loading) return;
+    if (regForm.password !== regForm.password_confirm) {
+      addToast("Les mots de passe ne correspondent pas", "error");
       return;
     }
-
     setLoading(true);
     try {
-      await onRegister(registerForm);
+      await register(regForm);
+      addToast("Inscription réussie", "success");
     } catch (err) {
-      const msg =
-        err?.email?.[0] ||
-        err?.password?.[0] ||
-        err?.password_confirm?.[0] ||
-        err?.detail ||
-        "Erreur d'inscription";
-      setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+      addToast(err.message || "Erreur inscription", "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.modal}>
-        <h2 style={styles.logo}>FubaMaps</h2>
-        <p style={styles.subtitle}>Decouvrez les commerces autour de vous</p>
+    <div style={overlay}>
+      <div style={modal}>
+        <div style={logoSection}>
+          <h1 style={logoText}>FubaMaps</h1>
+          <p style={subtitle}>Découvrez les meilleurs commerces</p>
+        </div>
 
-        <div style={styles.tabs}>
+        <div style={tabBar}>
           <button
-            style={tab === "login" ? styles.tabActive : styles.tab}
-            onClick={() => { setTab("login"); setError(""); }}
+            style={tab === "login" ? tabActive : tabBtn}
+            onClick={() => setTab("login")}
           >
             Connexion
           </button>
           <button
-            style={tab === "register" ? styles.tabActive : styles.tab}
-            onClick={() => { setTab("register"); setError(""); }}
+            style={tab === "register" ? tabActive : tabBtn}
+            onClick={() => setTab("register")}
           >
             Inscription
           </button>
         </div>
 
-        {error && <div style={styles.error}>{error}</div>}
-
         {tab === "login" ? (
-          <form onSubmit={handleLogin} style={styles.form}>
+          <form onSubmit={handleLogin} style={formStyle}>
             <input
               type="email"
               placeholder="Email"
               value={loginForm.email}
-              onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-              style={styles.input}
+              onChange={(e) =>
+                setLoginForm({ ...loginForm, email: e.target.value })
+              }
+              style={input}
               required
             />
             <input
               type="password"
               placeholder="Mot de passe"
               value={loginForm.password}
-              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-              style={styles.input}
+              onChange={(e) =>
+                setLoginForm({ ...loginForm, password: e.target.value })
+              }
+              style={input}
               required
             />
-            <button type="submit" disabled={loading} style={styles.btn}>
+            <button type="submit" style={submitBtn} disabled={loading}>
               {loading ? "Connexion..." : "Se connecter"}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleRegister} style={styles.form}>
-            <input
-              type="text"
-              placeholder="Prenom"
-              value={registerForm.first_name}
-              onChange={(e) => setRegisterForm({ ...registerForm, first_name: e.target.value })}
-              style={styles.input}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Nom"
-              value={registerForm.last_name}
-              onChange={(e) => setRegisterForm({ ...registerForm, last_name: e.target.value })}
-              style={styles.input}
-            />
+          <form onSubmit={handleRegister} style={formStyle}>
+            <div style={row}>
+              <input
+                placeholder="Prénom"
+                value={regForm.first_name}
+                onChange={(e) =>
+                  setRegForm({ ...regForm, first_name: e.target.value })
+                }
+                style={{ ...input, flex: 1 }}
+                required
+              />
+              <input
+                placeholder="Nom"
+                value={regForm.last_name}
+                onChange={(e) =>
+                  setRegForm({ ...regForm, last_name: e.target.value })
+                }
+                style={{ ...input, flex: 1 }}
+              />
+            </div>
             <input
               type="email"
               placeholder="Email"
-              value={registerForm.email}
-              onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-              style={styles.input}
+              value={regForm.email}
+              onChange={(e) =>
+                setRegForm({ ...regForm, email: e.target.value })
+              }
+              style={input}
               required
             />
             <input
               type="password"
-              placeholder="Mot de passe"
-              value={registerForm.password}
-              onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-              style={styles.input}
+              placeholder="Mot de passe (min 8 car.)"
+              value={regForm.password}
+              onChange={(e) =>
+                setRegForm({ ...regForm, password: e.target.value })
+              }
+              style={input}
               required
+              minLength={8}
             />
             <input
               type="password"
               placeholder="Confirmer mot de passe"
-              value={registerForm.password_confirm}
-              onChange={(e) => setRegisterForm({ ...registerForm, password_confirm: e.target.value })}
-              style={styles.input}
+              value={regForm.password_confirm}
+              onChange={(e) =>
+                setRegForm({ ...regForm, password_confirm: e.target.value })
+              }
+              style={input}
               required
+              minLength={8}
             />
-            <button type="submit" disabled={loading} style={styles.btn}>
+            <button type="submit" style={submitBtn} disabled={loading}>
               {loading ? "Inscription..." : "S'inscrire"}
             </button>
           </form>
@@ -154,97 +167,85 @@ export default function LoginModal({ onLogin, onRegister }) {
   );
 }
 
-const styles = {
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.7)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 9999,
-  },
-  modal: {
-    background: "var(--bg-card, #fff)",
-    color: "var(--text, #222)",
-    borderRadius: 16,
-    padding: "32px 28px",
-    width: "90%",
-    maxWidth: 400,
-    boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-  },
-  logo: {
-    textAlign: "center",
-    fontSize: 28,
-    fontWeight: 800,
-    margin: 0,
-    color: "var(--accent, #2563eb)",
-  },
-  subtitle: {
-    textAlign: "center",
-    fontSize: 14,
-    color: "var(--text-muted, #666)",
-    margin: "4px 0 20px",
-  },
-  tabs: {
-    display: "flex",
-    gap: 0,
-    marginBottom: 16,
-    borderRadius: 8,
-    overflow: "hidden",
-    border: "1px solid var(--border, #ddd)",
-  },
-  tab: {
-    flex: 1,
-    padding: "10px 0",
-    border: "none",
-    background: "transparent",
-    cursor: "pointer",
-    fontWeight: 500,
-    fontSize: 14,
-    color: "var(--text-muted, #888)",
-  },
-  tabActive: {
-    flex: 1,
-    padding: "10px 0",
-    border: "none",
-    background: "var(--accent, #2563eb)",
-    color: "#fff",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: 14,
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
-  input: {
-    padding: "10px 14px",
-    borderRadius: 8,
-    border: "1px solid var(--border, #ddd)",
-    fontSize: 14,
-    background: "var(--bg-input, #f9f9f9)",
-    color: "var(--text, #222)",
-    outline: "none",
-  },
-  btn: {
-    padding: "12px",
-    borderRadius: 8,
-    border: "none",
-    background: "var(--accent, #2563eb)",
-    color: "#fff",
-    fontWeight: 600,
-    fontSize: 15,
-    cursor: "pointer",
-    marginTop: 4,
-  },
-  error: {
-    background: "#fef2f2",
-    color: "#dc2626",
-    padding: "8px 12px",
-    borderRadius: 8,
-    fontSize: 13,
-    marginBottom: 8,
-  },
+const overlay = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.6)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 9999,
+  backdropFilter: "blur(4px)",
+};
+
+const modal = {
+  background: "var(--bg-card, #fff)",
+  color: "var(--text, #222)",
+  borderRadius: 16,
+  padding: "32px 28px",
+  width: "min(420px, 92vw)",
+  maxHeight: "90vh",
+  overflowY: "auto",
+  boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+};
+
+const logoSection = { textAlign: "center", marginBottom: 20 };
+const logoText = { fontSize: 28, fontWeight: 800, color: "var(--accent, #2563eb)", margin: 0 };
+const subtitle = { fontSize: 14, color: "var(--text-muted, #666)", margin: "4px 0 0" };
+
+const tabBar = {
+  display: "flex",
+  gap: 0,
+  marginBottom: 20,
+  borderRadius: 8,
+  overflow: "hidden",
+  border: "1px solid var(--border, #ddd)",
+};
+
+const tabBtn = {
+  flex: 1,
+  padding: "10px 0",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 14,
+  fontWeight: 600,
+  background: "transparent",
+  color: "var(--text-muted, #666)",
+  transition: "all 0.2s",
+};
+
+const tabActive = {
+  ...tabBtn,
+  background: "var(--accent, #2563eb)",
+  color: "#fff",
+};
+
+const formStyle = { display: "flex", flexDirection: "column", gap: 12 };
+
+const input = {
+  padding: "12px 14px",
+  borderRadius: 8,
+  border: "1px solid var(--border, #ddd)",
+  fontSize: 14,
+  background: "var(--bg-input, #f9f9f9)",
+  color: "var(--text, #222)",
+  outline: "none",
+  transition: "border-color 0.2s",
+  width: "100%",
+  boxSizing: "border-box",
+};
+
+const row = { display: "flex", gap: 8 };
+
+const submitBtn = {
+  padding: "12px 0",
+  borderRadius: 8,
+  border: "none",
+  background: "var(--accent, #2563eb)",
+  color: "#fff",
+  fontSize: 15,
+  fontWeight: 700,
+  cursor: "pointer",
+  transition: "opacity 0.2s",
+  marginTop: 4,
 };

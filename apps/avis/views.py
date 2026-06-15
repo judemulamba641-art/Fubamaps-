@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from django.shortcuts import get_object_or_404
 from django.db.models import Avg, Count
@@ -22,26 +23,30 @@ from rest_framework.decorators import api_view
 
 @api_view(["GET"])
 def get_avis(request):
-    avis = Avis.objects.all()
+    avis = Avis.objects.filter(is_active=True)
     serializer = AvisSerializer(avis, many=True)
     return Response(serializer.data)
 
 
 # =========================================================
-# ✍️ CREATE AVIS
+# CREATE AVIS
 # =========================================================
 
 
 class AvisCreateView(APIView):
     """
     POST /api/avis/
+    Authenticated users get their user linked automatically.
     """
 
     def post(self, request):
         serializer = AvisCreateSerializer(data=request.data)
 
         if serializer.is_valid():
-            review = create_review(serializer.validated_data)
+            review = create_review(
+                serializer.validated_data,
+                user=request.user if request.user.is_authenticated else None,
+            )
 
             return Response(AvisSerializer(review).data, status=status.HTTP_201_CREATED)
 
@@ -49,7 +54,7 @@ class AvisCreateView(APIView):
 
 
 # =========================================================
-# ✏️ UPDATE AVIS
+# UPDATE AVIS
 # =========================================================
 
 
@@ -64,7 +69,7 @@ class AvisUpdateView(generics.UpdateAPIView):
 
 
 # =========================================================
-# 🗑️ DELETE (SOFT)
+# DELETE (SOFT)
 # =========================================================
 
 
@@ -83,7 +88,7 @@ class AvisDeleteView(APIView):
 
 
 # =========================================================
-# 📊 LISTE AVIS PAR COMMERCE (FILTRABLE)
+# LISTE AVIS PAR COMMERCE (FILTRABLE)
 # =========================================================
 
 
@@ -100,7 +105,6 @@ class CommerceAvisListView(APIView):
 
         avis = get_filtered_reviews(commerce, min_note)
 
-        # filtre prix
         if price_rating:
             avis = avis.filter(price_rating=price_rating)
 
@@ -110,7 +114,7 @@ class CommerceAvisListView(APIView):
 
 
 # =========================================================
-# 📈 STATS (ULTRA IMPORTANT POUR IA)
+# STATS
 # =========================================================
 
 
@@ -124,14 +128,12 @@ class AvisStatsView(APIView):
 
         avis = commerce.avis.filter(is_active=True)
 
-        # moyennes
         stats = avis.aggregate(
             average_rating=Avg("note"),
             average_price_rating=Avg("price_rating"),
             total_reviews=Count("id"),
         )
 
-        # distribution des notes
         distribution = {i: avis.filter(note=i).count() for i in range(1, 6)}
 
         data = {
@@ -147,7 +149,7 @@ class AvisStatsView(APIView):
 
 
 # =========================================================
-# 👍 LIKE / DISLIKE
+# LIKE / DISLIKE
 # =========================================================
 
 
@@ -169,7 +171,7 @@ class AvisReactionView(APIView):
 
 
 # =========================================================
-# 🚨 REPORT AVIS
+# REPORT AVIS
 # =========================================================
 
 
@@ -188,6 +190,28 @@ class AvisReportView(APIView):
 
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Avis signalé"}, status=status.HTTP_201_CREATED)
+            return Response(
+                {"message": "Avis signalé"},
+                status=status.HTTP_201_CREATED,
+            )
 
-        return Response(serializer.errors, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# =========================================================
+# USER'S REVIEWS - Avis de l'utilisateur connecté
+# =========================================================
+
+
+class UserAvisListView(APIView):
+    """
+    GET /api/avis/me/
+    Returns reviews by the authenticated user.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        avis = Avis.objects.filter(user=request.user, is_active=True)
+        serializer = AvisSerializer(avis, many=True)
+        return Response(serializer.data)

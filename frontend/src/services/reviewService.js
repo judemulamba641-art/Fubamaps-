@@ -1,66 +1,82 @@
-import { apiFetch } from "./api";
+/**
+ * Service API Avis (Reviews) - FubaMaps.
+ */
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+
+import { authFetch } from "./authService";
+
+async function handleResponse(res) {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      data.detail ||
+      Object.values(data).flat().join(", ") ||
+      "Erreur serveur";
+    throw new Error(msg);
+  }
+  return data;
+}
 
 export async function fetchAllReviews() {
-  const res = await apiFetch("/avis/");
-  if (!res.ok) throw new Error("Erreur chargement avis");
-  return res.json();
+  const res = await fetch(`${API_BASE}/avis/`);
+  return handleResponse(res);
 }
 
-export async function fetchReviewsByCommerce(commerceId) {
-  const res = await apiFetch(`/avis/commerce/${commerceId}/`);
-  if (!res.ok) throw new Error("Erreur chargement avis commerce");
-  return res.json();
+export async function fetchCommerceReviews(commerceId) {
+  const res = await fetch(`${API_BASE}/avis/commerce/${commerceId}/`);
+  return handleResponse(res);
 }
 
-export async function fetchReviewStats(commerceId) {
-  const res = await apiFetch(`/avis/commerce/${commerceId}/stats/`);
-  if (!res.ok) throw new Error("Erreur chargement stats");
-  return res.json();
+export async function fetchCommerceStats(commerceId) {
+  const res = await fetch(`${API_BASE}/avis/commerce/${commerceId}/stats/`);
+  return handleResponse(res);
 }
 
 export async function createReview(payload) {
-  const res = await apiFetch("/avis/create", {
+  const res = await authFetch(`${API_BASE}/avis/create`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  const data = await res.json();
-  if (!res.ok) throw data;
-  return data;
+  return handleResponse(res);
 }
 
 export async function updateReview(id, payload) {
-  const res = await apiFetch(`/avis/${id}/update/`, {
+  const res = await authFetch(`${API_BASE}/avis/${id}/update/`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
-  const data = await res.json();
-  if (!res.ok) throw data;
-  return data;
+  return handleResponse(res);
 }
 
 export async function deleteReview(id) {
-  const res = await apiFetch(`/avis/${id}/delete/`, {
+  const res = await authFetch(`${API_BASE}/avis/${id}/delete/`, {
     method: "DELETE",
   });
-  if (res.status !== 200 && res.status !== 204) {
-    throw new Error("Erreur suppression avis");
-  }
+  if (res.status === 204 || res.status === 200) return { success: true };
+  const data = await res.json().catch(() => ({}));
+  throw new Error(data.detail || "Erreur suppression");
 }
 
 export async function reactToReview(id, action) {
-  const res = await apiFetch(`/avis/${id}/react/`, {
+  const res = await fetch(`${API_BASE}/avis/${id}/react/`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action }),
   });
-  if (!res.ok) throw new Error("Erreur reaction");
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function reportReview(id, reason, description = "") {
-  const res = await apiFetch(`/avis/${id}/report/`, {
+  const res = await fetch(`${API_BASE}/avis/${id}/report/`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason, description }),
   });
-  if (!res.ok) throw new Error("Erreur signalement");
-  return res.json();
+  return handleResponse(res);
+}
+
+export async function fetchMyReviews() {
+  const res = await authFetch(`${API_BASE}/avis/me/`);
+  return handleResponse(res);
 }

@@ -1,178 +1,256 @@
-import { useEffect, useState } from "react";
-import * as reviewService from "../services/reviewService";
-
 /**
- * Modal Avis complet.
- * - Liste des avis du commerce
- * - Ajouter un avis
- * - Modifier un avis
- * - Supprimer un avis
+ * Modal Avis (Reviews) - FubaMaps.
+ * CRUD complet des avis pour un commerce.
  */
-export default function ReviewModal({ commerce, onClose, addToast }) {
+
+import { useCallback, useEffect, useState } from "react";
+import { useToast } from "./useToast";
+import {
+  fetchCommerceReviews,
+  createReview,
+  updateReview,
+  deleteReview,
+} from "../services/reviewService";
+
+export default function ReviewModal({ commerce, onClose }) {
+  const { addToast } = useToast();
   const [reviews, setReviews] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState("list"); // list | create | edit
+  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState("list");
   const [editingReview, setEditingReview] = useState(null);
-  const [form, setForm] = useState({ note: 5, price_rating: 3, commentaire: "", user_name: "" });
-  const [submitting, setSubmitting] = useState(false);
 
-  const commerceId = commerce?.id;
+  const [form, setForm] = useState({
+    note: 5,
+    price_rating: 3,
+    commentaire: "",
+    user_name: "",
+  });
 
-  const loadReviews = async () => {
-    if (!commerceId) return;
+  const loadReviews = useCallback(async () => {
+    if (!commerce) return;
     setLoading(true);
     try {
-      const [revs, st] = await Promise.all([
-        reviewService.fetchReviewsByCommerce(commerceId),
-        reviewService.fetchReviewStats(commerceId),
-      ]);
-      setReviews(revs);
-      setStats(st);
+      const data = await fetchCommerceReviews(commerce.id);
+      setReviews(data);
     } catch {
-      addToast?.("Erreur chargement avis", "error");
+      addToast("Erreur chargement avis", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [commerce, addToast]);
 
   useEffect(() => {
     loadReviews();
-  }, [commerceId]);
+  }, [loadReviews]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
+    setLoading(true);
     try {
-      await reviewService.createReview({
-        commerce: commerceId,
-        note: Number(form.note),
-        price_rating: Number(form.price_rating),
+      await createReview({
+        commerce: commerce.id,
+        note: parseInt(form.note, 10),
+        price_rating: parseInt(form.price_rating, 10),
         commentaire: form.commentaire,
         user_name: form.user_name,
       });
-      addToast?.("Avis ajoute !", "success");
+      addToast("Avis ajouté", "success");
       setForm({ note: 5, price_rating: 3, commentaire: "", user_name: "" });
-      setMode("list");
-      loadReviews();
+      setView("list");
+      await loadReviews();
     } catch (err) {
-      addToast?.(JSON.stringify(err), "error");
+      addToast(err.message, "error");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!editingReview) return;
-    setSubmitting(true);
+    setLoading(true);
     try {
-      await reviewService.updateReview(editingReview.id, {
-        note: Number(form.note),
-        price_rating: Number(form.price_rating),
+      await updateReview(editingReview.id, {
+        note: parseInt(form.note, 10),
+        price_rating: parseInt(form.price_rating, 10),
         commentaire: form.commentaire,
       });
-      addToast?.("Avis modifie !", "success");
-      setMode("list");
+      addToast("Avis modifié", "success");
       setEditingReview(null);
-      loadReviews();
+      setView("list");
+      await loadReviews();
     } catch (err) {
-      addToast?.(JSON.stringify(err), "error");
+      addToast(err.message, "error");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Supprimer cet avis ?")) return;
+    setLoading(true);
     try {
-      await reviewService.deleteReview(id);
-      addToast?.("Avis supprime", "success");
-      loadReviews();
-    } catch {
-      addToast?.("Erreur suppression", "error");
+      await deleteReview(id);
+      addToast("Avis supprimé", "success");
+      await loadReviews();
+    } catch (err) {
+      addToast(err.message, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const startEdit = (rev) => {
-    setEditingReview(rev);
+  const startEdit = (review) => {
+    setEditingReview(review);
     setForm({
-      note: rev.note,
-      price_rating: rev.price_rating,
-      commentaire: rev.commentaire,
-      user_name: rev.user_name || "",
+      note: review.note,
+      price_rating: review.price_rating,
+      commentaire: review.commentaire,
+      user_name: review.user_name || "",
     });
-    setMode("edit");
+    setView("edit");
   };
 
-  if (!commerce) return null;
+  const startCreate = () => {
+    setEditingReview(null);
+    setForm({ note: 5, price_rating: 3, commentaire: "", user_name: "" });
+    setView("create");
+  };
+
+  const stars = (n) => "★".repeat(n) + "☆".repeat(5 - n);
 
   return (
-    <div style={overlay}>
-      <div style={modal}>
+    <div style={overlay} onClick={onClose}>
+      <div style={modal} onClick={(e) => e.stopPropagation()}>
         <div style={header}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Avis - {commerce.name}</h2>
-          <button onClick={onClose} style={closeBtn}>&times;</button>
+          <h2 style={titleStyle}>
+            Avis - {commerce?.name}
+          </h2>
+          <button style={closeBtn} onClick={onClose}>
+            &times;
+          </button>
         </div>
 
-        {stats && (
-          <div style={statsBar}>
-            <span>Note moyenne: <b>{stats.average_rating}/5</b></span>
-            <span>{stats.total_reviews} avis</span>
-          </div>
-        )}
-
-        <div style={navBar}>
-          <button style={mode === "list" ? navActive : navBtn} onClick={() => setMode("list")}>Liste</button>
-          <button style={mode === "create" ? navActive : navBtn} onClick={() => { setMode("create"); setEditingReview(null); setForm({ note: 5, price_rating: 3, commentaire: "", user_name: "" }); }}>Ajouter</button>
+        <div style={tabBar}>
+          <button
+            style={view === "list" ? tabActive : tabBtn}
+            onClick={() => setView("list")}
+          >
+            Liste ({reviews.length})
+          </button>
+          <button
+            style={view === "create" ? tabActive : tabBtn}
+            onClick={startCreate}
+          >
+            Ajouter
+          </button>
         </div>
 
-        <div style={content}>
-          {loading ? (
-            <p style={emptyText}>Chargement...</p>
-          ) : mode === "list" ? (
-            reviews.length === 0 ? (
-              <p style={emptyText}>Aucun avis pour ce commerce.</p>
-            ) : (
-              reviews.map((rev) => (
-                <div key={rev.id} style={reviewCard}>
+        <div style={body}>
+          {view === "list" && (
+            <div>
+              {loading && <p style={mutedText}>Chargement...</p>}
+              {!loading && reviews.length === 0 && (
+                <p style={mutedText}>Aucun avis pour ce commerce.</p>
+              )}
+              {reviews.map((r) => (
+                <div key={r.id} style={reviewCard}>
                   <div style={reviewHeader}>
-                    <span style={reviewNote}>{rev.note}/5</span>
-                    <span style={reviewUser}>{rev.user_name || "Anonyme"}</span>
-                    <span style={reviewDate}>{rev.created_at ? new Date(rev.created_at).toLocaleDateString("fr-FR") : ""}</span>
+                    <span style={starsStyle}>{stars(r.note)}</span>
+                    <span style={reviewDate}>
+                      {r.created_at
+                        ? new Date(r.created_at).toLocaleDateString("fr-FR")
+                        : ""}
+                    </span>
                   </div>
-                  {rev.commentaire && <p style={reviewComment}>{rev.commentaire}</p>}
+                  {r.commentaire && <p style={commentText}>{r.commentaire}</p>}
+                  {r.user_name && (
+                    <span style={userName}>— {r.user_name}</span>
+                  )}
                   <div style={reviewActions}>
-                    <button style={smallBtn} onClick={() => startEdit(rev)}>Modifier</button>
-                    <button style={smallBtnDanger} onClick={() => handleDelete(rev.id)}>Supprimer</button>
+                    <button style={smallBtn} onClick={() => startEdit(r)}>
+                      Modifier
+                    </button>
+                    <button
+                      style={{ ...smallBtn, color: "#ef4444" }}
+                      onClick={() => handleDelete(r.id)}
+                    >
+                      Supprimer
+                    </button>
                   </div>
                 </div>
-              ))
-            )
-          ) : (
-            <form onSubmit={mode === "edit" ? handleUpdate : handleCreate} style={formStyle}>
+              ))}
+            </div>
+          )}
+
+          {(view === "create" || view === "edit") && (
+            <form
+              onSubmit={view === "edit" ? handleUpdate : handleCreate}
+              style={formStyle}
+            >
               <label style={labelStyle}>
-                Note (1-5)
-                <select value={form.note} onChange={(e) => setForm({...form, note: e.target.value})} style={input}>
-                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                Note
+                <select
+                  value={form.note}
+                  onChange={(e) => setForm({ ...form, note: e.target.value })}
+                  style={input}
+                >
+                  {[5, 4, 3, 2, 1].map((n) => (
+                    <option key={n} value={n}>
+                      {stars(n)} ({n}/5)
+                    </option>
+                  ))}
                 </select>
               </label>
+
               <label style={labelStyle}>
-                Rapport qualite/prix
-                <select value={form.price_rating} onChange={(e) => setForm({...form, price_rating: e.target.value})} style={input}>
-                  <option value="1">Tres cher</option>
-                  <option value="2">Cher</option>
-                  <option value="3">Normal</option>
-                  <option value="4">Bon marche</option>
-                  <option value="5">Tres bon marche</option>
+                Rapport qualité/prix
+                <select
+                  value={form.price_rating}
+                  onChange={(e) =>
+                    setForm({ ...form, price_rating: e.target.value })
+                  }
+                  style={input}
+                >
+                  <option value={1}>Très cher</option>
+                  <option value={2}>Cher</option>
+                  <option value={3}>Normal</option>
+                  <option value={4}>Bon marché</option>
+                  <option value={5}>Très bon marché</option>
                 </select>
               </label>
-              {mode === "create" && (
-                <input placeholder="Votre nom (optionnel)" value={form.user_name} onChange={(e) => setForm({...form, user_name: e.target.value})} style={input} />
+
+              <label style={labelStyle}>
+                Commentaire
+                <textarea
+                  value={form.commentaire}
+                  onChange={(e) =>
+                    setForm({ ...form, commentaire: e.target.value })
+                  }
+                  style={{ ...input, minHeight: 80, resize: "vertical" }}
+                  placeholder="Votre avis..."
+                />
+              </label>
+
+              {view === "create" && (
+                <label style={labelStyle}>
+                  Votre nom (optionnel)
+                  <input
+                    value={form.user_name}
+                    onChange={(e) =>
+                      setForm({ ...form, user_name: e.target.value })
+                    }
+                    style={input}
+                    placeholder="Nom"
+                  />
+                </label>
               )}
-              <textarea placeholder="Commentaire" value={form.commentaire} onChange={(e) => setForm({...form, commentaire: e.target.value})} style={{...input, minHeight: 80, resize: "vertical"}} />
-              <button type="submit" disabled={submitting} style={primaryBtn}>
-                {submitting ? "..." : mode === "edit" ? "Modifier" : "Ajouter"}
+
+              <button type="submit" style={submitBtn} disabled={loading}>
+                {loading
+                  ? "..."
+                  : view === "edit"
+                    ? "Sauvegarder"
+                    : "Publier l'avis"}
               </button>
             </form>
           )}
@@ -182,26 +260,137 @@ export default function ReviewModal({ commerce, onClose, addToast }) {
   );
 }
 
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 };
-const modal = { background: "var(--bg-card, #fff)", color: "var(--text, #222)", borderRadius: 16, width: "90%", maxWidth: 520, maxHeight: "85vh", overflow: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" };
-const header = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px 12px" };
-const closeBtn = { background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "var(--text-muted, #888)" };
-const statsBar = { display: "flex", justifyContent: "space-between", padding: "0 24px 8px", fontSize: 13, color: "var(--text-muted, #666)" };
-const navBar = { display: "flex", gap: 0, borderBottom: "1px solid var(--border, #e5e5e5)", padding: "0 24px" };
-const navBtn = { padding: "10px 16px", border: "none", background: "none", cursor: "pointer", fontSize: 13, color: "var(--text-muted, #888)", borderBottom: "2px solid transparent" };
-const navActive = { ...navBtn, color: "var(--accent, #2563eb)", fontWeight: 600, borderBottom: "2px solid var(--accent, #2563eb)" };
-const content = { padding: "16px 24px 24px" };
-const emptyText = { color: "var(--text-muted, #888)", textAlign: "center", fontSize: 14 };
-const reviewCard = { padding: 12, border: "1px solid var(--border, #e5e5e5)", borderRadius: 8, marginBottom: 10 };
-const reviewHeader = { display: "flex", gap: 10, alignItems: "center", marginBottom: 6 };
-const reviewNote = { background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: 12, fontSize: 12, fontWeight: 600 };
-const reviewUser = { fontSize: 13, fontWeight: 500, color: "var(--text, #333)" };
-const reviewDate = { fontSize: 11, color: "var(--text-muted, #aaa)", marginLeft: "auto" };
-const reviewComment = { margin: "0 0 8px", fontSize: 13, color: "var(--text-muted, #555)", lineHeight: 1.4 };
-const reviewActions = { display: "flex", gap: 8 };
-const smallBtn = { padding: "4px 12px", borderRadius: 6, border: "1px solid var(--border, #ddd)", background: "var(--bg-input, #f9f9f9)", color: "var(--text, #333)", fontSize: 11, cursor: "pointer" };
-const smallBtnDanger = { ...smallBtn, color: "#dc2626", borderColor: "#fecaca" };
-const formStyle = { display: "flex", flexDirection: "column", gap: 12 };
-const labelStyle = { display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 500, color: "var(--text, #333)" };
-const input = { padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border, #ddd)", fontSize: 14, background: "var(--bg-input, #f9f9f9)", color: "var(--text, #222)" };
-const primaryBtn = { padding: "10px", borderRadius: 8, border: "none", background: "var(--accent, #2563eb)", color: "#fff", fontWeight: 600, fontSize: 14, cursor: "pointer" };
+const overlay = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.5)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 1000,
+  backdropFilter: "blur(3px)",
+};
+
+const modal = {
+  background: "var(--bg-card, #fff)",
+  color: "var(--text, #222)",
+  borderRadius: 16,
+  width: "min(520px, 94vw)",
+  maxHeight: "85vh",
+  overflow: "hidden",
+  boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const header = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "16px 24px",
+  borderBottom: "1px solid var(--border, #eee)",
+};
+
+const titleStyle = { margin: 0, fontSize: 18, fontWeight: 700 };
+
+const closeBtn = {
+  background: "none",
+  border: "none",
+  fontSize: 24,
+  cursor: "pointer",
+  color: "var(--text-muted, #666)",
+};
+
+const tabBar = {
+  display: "flex",
+  borderBottom: "1px solid var(--border, #eee)",
+};
+
+const tabBtn = {
+  flex: 1,
+  padding: "10px 0",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  fontSize: 14,
+  color: "var(--text-muted, #666)",
+  fontWeight: 500,
+};
+
+const tabActive = {
+  ...tabBtn,
+  color: "var(--accent, #2563eb)",
+  fontWeight: 700,
+  borderBottom: "2px solid var(--accent, #2563eb)",
+};
+
+const body = { padding: 20, overflowY: "auto", flex: 1 };
+
+const reviewCard = {
+  padding: 14,
+  borderRadius: 10,
+  border: "1px solid var(--border, #eee)",
+  marginBottom: 10,
+};
+
+const reviewHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  marginBottom: 6,
+};
+
+const starsStyle = { color: "#f59e0b", fontSize: 16 };
+const reviewDate = { fontSize: 12, color: "var(--text-muted, #999)" };
+const commentText = { fontSize: 14, margin: "6px 0", lineHeight: 1.4 };
+const userName = { fontSize: 12, color: "var(--text-muted, #888)" };
+const mutedText = { color: "var(--text-muted, #888)", fontSize: 14, textAlign: "center" };
+
+const reviewActions = {
+  display: "flex",
+  gap: 8,
+  marginTop: 8,
+};
+
+const smallBtn = {
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 12,
+  color: "var(--accent, #2563eb)",
+  fontWeight: 600,
+  padding: 0,
+};
+
+const formStyle = { display: "flex", flexDirection: "column", gap: 14 };
+
+const labelStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--text-muted, #555)",
+};
+
+const input = {
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border, #ddd)",
+  fontSize: 14,
+  background: "var(--bg-input, #f9f9f9)",
+  color: "var(--text, #222)",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const submitBtn = {
+  padding: "12px 0",
+  borderRadius: 8,
+  border: "none",
+  background: "var(--accent, #2563eb)",
+  color: "#fff",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
+  marginTop: 4,
+};

@@ -1,13 +1,26 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.jsx";
+
 import { ToastProvider } from "./components/ToastContext";
-import "./App.css";
+import { AuthProvider } from "./store/authStore";
+import { CommerceProvider } from "./store/commerceStore";
+import { ReviewProvider } from "./store/reviewStore";
+import { UIProvider } from "./store/uiStore";
+
+import App from "./App.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ToastProvider>
-      <App />
+      <UIProvider>
+        <AuthProvider>
+          <CommerceProvider>
+            <ReviewProvider>
+              <App />
+            </ReviewProvider>
+          </CommerceProvider>
+        </AuthProvider>
+      </UIProvider>
     </ToastProvider>
   </StrictMode>
 );

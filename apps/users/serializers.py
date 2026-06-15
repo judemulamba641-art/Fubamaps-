@@ -1,12 +1,22 @@
-from rest_framework import serializers
+"""
+Serializers de l'application Users - FubaMaps.
+Gestion complète : inscription, connexion, profil, mot de passe, déconnexion.
+"""
+
 from django.contrib.auth.password_validation import validate_password
+from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
 
 
+# =========================================================
+# UserSerializer - Lecture du profil utilisateur
+# =========================================================
+
+
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer complet pour lecture/mise a jour du profil utilisateur."""
+    """Serializer principal pour la lecture/mise à jour du profil."""
 
     full_name = serializers.CharField(read_only=True)
 
@@ -24,7 +34,6 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "is_verified",
             "is_commerce_owner",
-            "is_active",
             "date_joined",
             "last_login",
         ]
@@ -33,14 +42,19 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "is_verified",
-            "is_active",
+            "is_commerce_owner",
             "date_joined",
             "last_login",
         ]
 
 
+# =========================================================
+# UserProfileSerializer - Profil public allégé
+# =========================================================
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Version allegee pour affichage public."""
+    """Profil public (visible par les autres utilisateurs)."""
 
     full_name = serializers.CharField(read_only=True)
 
@@ -48,7 +62,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "email",
             "first_name",
             "last_name",
             "full_name",
@@ -57,17 +70,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "role",
             "date_joined",
         ]
-        read_only_fields = fields
+
+
+# =========================================================
+# RegisterSerializer - Inscription
+# =========================================================
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    """Inscription d'un nouvel utilisateur."""
+    """Inscription d'un nouvel utilisateur avec validation robuste."""
 
     password = serializers.CharField(
         write_only=True,
+        min_length=8,
         validators=[validate_password],
     )
-    password_confirm = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
         model = User
@@ -79,6 +97,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
         ]
+
+    def validate_email(self, value):
+        email = value.lower().strip()
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError(
+                "Un compte avec cet email existe déjà."
+            )
+        return email
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
@@ -98,27 +124,71 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+# =========================================================
+# LoginSerializer - Connexion (compatible JWT TokenObtainPair)
+# =========================================================
+
+
 class LoginSerializer(serializers.Serializer):
-    """Serializer de connexion (compatible JWT simplejwt)."""
+    """Serializer de connexion retournant les tokens JWT."""
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
+    def validate(self, attrs):
+        email = attrs.get("email", "").lower().strip()
+        password = attrs.get("password")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                "Email ou mot de passe incorrect."
+            )
+
+        if not user.check_password(password):
+            raise serializers.ValidationError(
+                "Email ou mot de passe incorrect."
+            )
+
+        if not user.is_active:
+            raise serializers.ValidationError(
+                "Ce compte est désactivé."
+            )
+
+        refresh = RefreshToken.for_user(user)
+
+        return {
+            "user": UserSerializer(user).data,
+            "tokens": {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            },
+        }
+
+
+# =========================================================
+# ChangePasswordSerializer - Changement de mot de passe
+# =========================================================
+
 
 class ChangePasswordSerializer(serializers.Serializer):
-    """Modification du mot de passe utilisateur connecte."""
+    """Changement de mot de passe pour un utilisateur connecté."""
 
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(
         write_only=True,
+        min_length=8,
         validators=[validate_password],
     )
-    new_password_confirm = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True, min_length=8)
 
     def validate_old_password(self, value):
         user = self.context["request"].user
         if not user.check_password(value):
-            raise serializers.ValidationError("Ancien mot de passe incorrect.")
+            raise serializers.ValidationError(
+                "L'ancien mot de passe est incorrect."
+            )
         return value
 
     def validate(self, attrs):
@@ -131,12 +201,17 @@ class ChangePasswordSerializer(serializers.Serializer):
     def save(self, **kwargs):
         user = self.context["request"].user
         user.set_password(self.validated_data["new_password"])
-        user.save()
+        user.save(update_fields=["password"])
         return user
 
 
+# =========================================================
+# UpdateProfileSerializer - Modification du profil
+# =========================================================
+
+
 class UpdateProfileSerializer(serializers.ModelSerializer):
-    """Mise a jour du profil utilisateur."""
+    """Mise à jour partielle du profil utilisateur."""
 
     class Meta:
         model = User
@@ -144,21 +219,35 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
-            "avatar",
             "city",
         ]
 
+    def validate_phone_number(self, value):
+        if value and not value.replace("+", "").isdigit():
+            raise serializers.ValidationError(
+                "Numéro de téléphone invalide."
+            )
+        return value
+
+
+# =========================================================
+# LogoutSerializer - Déconnexion JWT (blacklist refresh)
+# =========================================================
+
 
 class LogoutSerializer(serializers.Serializer):
-    """Deconnexion JWT - blacklist du refresh token."""
+    """Blacklist le refresh token pour déconnexion."""
 
     refresh = serializers.CharField()
 
-    def save(self, **kwargs):
+    def validate_refresh(self, value):
         try:
-            token = RefreshToken(self.validated_data["refresh"])
-            token.blacklist()
+            self.token = RefreshToken(value)
         except Exception:
             raise serializers.ValidationError(
-                {"refresh": "Token invalide ou deja blackliste."}
+                "Token invalide ou expiré."
             )
+        return value
+
+    def save(self, **kwargs):
+        self.token.blacklist()

@@ -13,7 +13,7 @@ urlpatterns = [
     # 🔧 Admin Django
     path("admin/", admin.site.urls),
     # 📡 API Fubamaps
+    path("api/users/", include("apps.users.urls")),
     path("api/commerces/", include("apps.commerces.urls")),
     path("api/avis/", include("apps.avis.urls")),
-    path("api/users/", include("apps.users.urls")),
 ]

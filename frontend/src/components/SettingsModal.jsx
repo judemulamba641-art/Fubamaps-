@@ -1,39 +1,44 @@
-import { useState } from "react";
-import * as authService from "../services/authService";
-
 /**
- * Modal Settings complet.
- * Sections: Compte, Session, Preferences, A propos.
+ * Modal Settings - FubaMaps.
+ * Sections : Compte, Session, Préférences, À propos.
  */
-export default function SettingsModal({ user, onClose, onLogout, theme, onThemeChange, onRefreshUser }) {
+
+import { useState } from "react";
+import { useAuth } from "../store/authStore";
+import { useUI } from "../store/uiStore";
+import { useToast } from "./useToast";
+import { changePassword, updateProfile } from "../services/authService";
+
+export default function SettingsModal({ onClose }) {
+  const { user, logout, refreshUser } = useAuth();
+  const { theme, setTheme } = useUI();
+  const { addToast } = useToast();
+
   const [section, setSection] = useState("account");
-  const [editProfile, setEditProfile] = useState(false);
-  const [changePassword, setChangePassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const [profileForm, setProfileForm] = useState({
     first_name: user?.first_name || "",
     last_name: user?.last_name || "",
     phone_number: user?.phone_number || "",
     city: user?.city || "",
   });
+
   const [pwForm, setPwForm] = useState({
     old_password: "",
     new_password: "",
     new_password_confirm: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMsg("");
     try {
-      await authService.updateProfile(profileForm);
-      setMsg("Profil mis a jour !");
-      setEditProfile(false);
-      if (onRefreshUser) onRefreshUser();
+      await updateProfile(profileForm);
+      await refreshUser();
+      addToast("Profil mis à jour", "success");
     } catch (err) {
-      setMsg(typeof err === "string" ? err : JSON.stringify(err));
+      addToast(err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -41,136 +46,348 @@ export default function SettingsModal({ user, onClose, onLogout, theme, onThemeC
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
+    if (pwForm.new_password !== pwForm.new_password_confirm) {
+      addToast("Les mots de passe ne correspondent pas", "error");
+      return;
+    }
     setLoading(true);
-    setMsg("");
     try {
-      await authService.changePassword(pwForm);
-      setMsg("Mot de passe modifie !");
-      setChangePassword(false);
+      await changePassword(
+        pwForm.old_password,
+        pwForm.new_password,
+        pwForm.new_password_confirm
+      );
+      addToast("Mot de passe modifié", "success");
       setPwForm({ old_password: "", new_password: "", new_password_confirm: "" });
     } catch (err) {
-      setMsg(typeof err === "string" ? err : JSON.stringify(err));
+      addToast(err.message, "error");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    onClose();
+  };
+
   const sections = [
     { key: "account", label: "Compte" },
     { key: "session", label: "Session" },
-    { key: "prefs", label: "Preferences" },
-    { key: "about", label: "A propos" },
+    { key: "preferences", label: "Préférences" },
+    { key: "about", label: "À propos" },
   ];
 
   return (
-    <div style={overlay}>
-      <div style={modal}>
+    <div style={overlay} onClick={onClose}>
+      <div style={modal} onClick={(e) => e.stopPropagation()}>
         <div style={header}>
-          <h2 style={{ margin: 0, fontSize: 20 }}>Parametres</h2>
-          <button onClick={onClose} style={closeBtn}>&times;</button>
+          <h2 style={title}>Settings</h2>
+          <button style={closeBtn} onClick={onClose}>
+            &times;
+          </button>
         </div>
 
-        <div style={tabs}>
-          {sections.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => { setSection(s.key); setMsg(""); }}
-              style={section === s.key ? tabActive : tab}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+        <div style={layout}>
+          <nav style={sidebar}>
+            {sections.map((s) => (
+              <button
+                key={s.key}
+                style={section === s.key ? navActive : navBtn}
+                onClick={() => setSection(s.key)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </nav>
 
-        {msg && <div style={msgStyle}>{msg}</div>}
+          <div style={content}>
+            {section === "account" && (
+              <div>
+                <h3 style={sectionTitle}>Profil</h3>
+                <div style={infoRow}>
+                  <span style={infoLabel}>Email</span>
+                  <span>{user?.email}</span>
+                </div>
+                <div style={infoRow}>
+                  <span style={infoLabel}>Rôle</span>
+                  <span>{user?.role}</span>
+                </div>
 
-        <div style={content}>
-          {section === "account" && (
-            <div>
-              {!editProfile && !changePassword ? (
-                <>
-                  <div style={infoRow}><b>Email:</b> {user?.email}</div>
-                  <div style={infoRow}><b>Nom:</b> {user?.first_name} {user?.last_name}</div>
-                  <div style={infoRow}><b>Telephone:</b> {user?.phone_number || "Non renseigne"}</div>
-                  <div style={infoRow}><b>Ville:</b> {user?.city || "Non renseignee"}</div>
-                  <div style={infoRow}><b>Role:</b> {user?.role}</div>
-                  <div style={btnGroup}>
-                    <button style={actionBtn} onClick={() => setEditProfile(true)}>Modifier profil</button>
-                    <button style={actionBtn} onClick={() => setChangePassword(true)}>Changer mot de passe</button>
-                  </div>
-                </>
-              ) : editProfile ? (
+                <h3 style={{ ...sectionTitle, marginTop: 20 }}>Modifier profil</h3>
                 <form onSubmit={handleUpdateProfile} style={formStyle}>
-                  <input placeholder="Prenom" value={profileForm.first_name} onChange={(e) => setProfileForm({...profileForm, first_name: e.target.value})} style={input} />
-                  <input placeholder="Nom" value={profileForm.last_name} onChange={(e) => setProfileForm({...profileForm, last_name: e.target.value})} style={input} />
-                  <input placeholder="Telephone" value={profileForm.phone_number} onChange={(e) => setProfileForm({...profileForm, phone_number: e.target.value})} style={input} />
-                  <input placeholder="Ville" value={profileForm.city} onChange={(e) => setProfileForm({...profileForm, city: e.target.value})} style={input} />
-                  <div style={btnGroup}>
-                    <button type="submit" disabled={loading} style={primaryBtn}>{loading ? "..." : "Sauvegarder"}</button>
-                    <button type="button" style={actionBtn} onClick={() => setEditProfile(false)}>Annuler</button>
-                  </div>
+                  <input
+                    placeholder="Prénom"
+                    value={profileForm.first_name}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, first_name: e.target.value })
+                    }
+                    style={input}
+                  />
+                  <input
+                    placeholder="Nom"
+                    value={profileForm.last_name}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, last_name: e.target.value })
+                    }
+                    style={input}
+                  />
+                  <input
+                    placeholder="Téléphone"
+                    value={profileForm.phone_number}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, phone_number: e.target.value })
+                    }
+                    style={input}
+                  />
+                  <input
+                    placeholder="Ville"
+                    value={profileForm.city}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, city: e.target.value })
+                    }
+                    style={input}
+                  />
+                  <button type="submit" style={actionBtn} disabled={loading}>
+                    {loading ? "..." : "Sauvegarder"}
+                  </button>
                 </form>
-              ) : (
+
+                <h3 style={{ ...sectionTitle, marginTop: 24 }}>Changer mot de passe</h3>
                 <form onSubmit={handleChangePassword} style={formStyle}>
-                  <input type="password" placeholder="Ancien mot de passe" value={pwForm.old_password} onChange={(e) => setPwForm({...pwForm, old_password: e.target.value})} style={input} required />
-                  <input type="password" placeholder="Nouveau mot de passe" value={pwForm.new_password} onChange={(e) => setPwForm({...pwForm, new_password: e.target.value})} style={input} required />
-                  <input type="password" placeholder="Confirmer nouveau mot de passe" value={pwForm.new_password_confirm} onChange={(e) => setPwForm({...pwForm, new_password_confirm: e.target.value})} style={input} required />
-                  <div style={btnGroup}>
-                    <button type="submit" disabled={loading} style={primaryBtn}>{loading ? "..." : "Modifier"}</button>
-                    <button type="button" style={actionBtn} onClick={() => setChangePassword(false)}>Annuler</button>
-                  </div>
+                  <input
+                    type="password"
+                    placeholder="Ancien mot de passe"
+                    value={pwForm.old_password}
+                    onChange={(e) =>
+                      setPwForm({ ...pwForm, old_password: e.target.value })
+                    }
+                    style={input}
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="Nouveau mot de passe"
+                    value={pwForm.new_password}
+                    onChange={(e) =>
+                      setPwForm({ ...pwForm, new_password: e.target.value })
+                    }
+                    style={input}
+                    required
+                    minLength={8}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Confirmer nouveau mot de passe"
+                    value={pwForm.new_password_confirm}
+                    onChange={(e) =>
+                      setPwForm({ ...pwForm, new_password_confirm: e.target.value })
+                    }
+                    style={input}
+                    required
+                    minLength={8}
+                  />
+                  <button type="submit" style={actionBtn} disabled={loading}>
+                    {loading ? "..." : "Changer mot de passe"}
+                  </button>
                 </form>
-              )}
-            </div>
-          )}
-
-          {section === "session" && (
-            <div>
-              <p style={{ color: "var(--text-muted, #666)", fontSize: 14 }}>
-                Connecte en tant que <b>{user?.email}</b>
-              </p>
-              <button onClick={onLogout} style={logoutBtn}>Se deconnecter</button>
-            </div>
-          )}
-
-          {section === "prefs" && (
-            <div>
-              <p style={{ fontSize: 14, color: "var(--text-muted, #666)", marginBottom: 12 }}>Theme actuel: <b>{theme === "dark" ? "Sombre" : "Clair"}</b></p>
-              <div style={btnGroup}>
-                <button style={theme === "light" ? primaryBtn : actionBtn} onClick={() => onThemeChange("light")}>Clair</button>
-                <button style={theme === "dark" ? primaryBtn : actionBtn} onClick={() => onThemeChange("dark")}>Sombre</button>
               </div>
-            </div>
-          )}
+            )}
 
-          {section === "about" && (
-            <div>
-              <div style={infoRow}><b>Application:</b> FubaMaps</div>
-              <div style={infoRow}><b>Version:</b> 2.0.0</div>
-              <div style={infoRow}><b>Backend:</b> Django REST Framework</div>
-              <div style={infoRow}><b>Frontend:</b> React + Vite</div>
-              <div style={infoRow}><b>API:</b> Operationnel</div>
-            </div>
-          )}
+            {section === "session" && (
+              <div>
+                <h3 style={sectionTitle}>Session</h3>
+                <p style={infoText}>Connecté en tant que : {user?.email}</p>
+                <button style={dangerBtn} onClick={handleLogout}>
+                  Se déconnecter
+                </button>
+              </div>
+            )}
+
+            {section === "preferences" && (
+              <div>
+                <h3 style={sectionTitle}>Thème</h3>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    style={theme === "light" ? themeActive : themeBtn}
+                    onClick={() => setTheme("light")}
+                  >
+                    Clair
+                  </button>
+                  <button
+                    style={theme === "dark" ? themeActive : themeBtn}
+                    onClick={() => setTheme("dark")}
+                  >
+                    Sombre
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {section === "about" && (
+              <div>
+                <h3 style={sectionTitle}>À propos</h3>
+                <div style={infoRow}>
+                  <span style={infoLabel}>Version</span>
+                  <span>1.0.0</span>
+                </div>
+                <div style={infoRow}>
+                  <span style={infoLabel}>Plateforme</span>
+                  <span>FubaMaps - Django + React</span>
+                </div>
+                <div style={infoRow}>
+                  <span style={infoLabel}>API</span>
+                  <span style={{ color: "#22c55e" }}>En ligne</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 };
-const modal = { background: "var(--bg-card, #fff)", color: "var(--text, #222)", borderRadius: 16, width: "90%", maxWidth: 500, maxHeight: "85vh", overflow: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" };
-const header = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px 12px" };
-const closeBtn = { background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "var(--text-muted, #888)" };
-const tabs = { display: "flex", gap: 0, borderBottom: "1px solid var(--border, #e5e5e5)", padding: "0 24px" };
-const tab = { padding: "10px 16px", border: "none", background: "none", cursor: "pointer", fontSize: 13, color: "var(--text-muted, #888)", borderBottom: "2px solid transparent" };
-const tabActive = { ...tab, color: "var(--accent, #2563eb)", fontWeight: 600, borderBottom: "2px solid var(--accent, #2563eb)" };
-const content = { padding: "20px 24px 24px" };
-const infoRow = { padding: "8px 0", fontSize: 14, borderBottom: "1px solid var(--border, #f0f0f0)" };
-const btnGroup = { display: "flex", gap: 8, marginTop: 16 };
-const actionBtn = { padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border, #ddd)", background: "var(--bg-input, #f9f9f9)", color: "var(--text, #333)", fontSize: 13, cursor: "pointer" };
-const primaryBtn = { ...actionBtn, background: "var(--accent, #2563eb)", color: "#fff", border: "none", fontWeight: 600 };
-const logoutBtn = { ...primaryBtn, background: "#dc2626" };
+const overlay = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.5)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 1000,
+  backdropFilter: "blur(3px)",
+};
+
+const modal = {
+  background: "var(--bg-card, #fff)",
+  color: "var(--text, #222)",
+  borderRadius: 16,
+  width: "min(680px, 94vw)",
+  maxHeight: "85vh",
+  overflow: "hidden",
+  boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const header = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "16px 24px",
+  borderBottom: "1px solid var(--border, #eee)",
+};
+
+const title = { margin: 0, fontSize: 18, fontWeight: 700 };
+
+const closeBtn = {
+  background: "none",
+  border: "none",
+  fontSize: 24,
+  cursor: "pointer",
+  color: "var(--text-muted, #666)",
+  padding: "0 4px",
+};
+
+const layout = {
+  display: "flex",
+  flex: 1,
+  overflow: "hidden",
+  minHeight: 0,
+};
+
+const sidebar = {
+  width: 160,
+  borderRight: "1px solid var(--border, #eee)",
+  display: "flex",
+  flexDirection: "column",
+  padding: "12px 0",
+  flexShrink: 0,
+};
+
+const navBtn = {
+  background: "none",
+  border: "none",
+  padding: "10px 20px",
+  textAlign: "left",
+  cursor: "pointer",
+  fontSize: 14,
+  color: "var(--text-muted, #666)",
+  transition: "all 0.15s",
+};
+
+const navActive = {
+  ...navBtn,
+  background: "var(--accent-bg, #eff6ff)",
+  color: "var(--accent, #2563eb)",
+  fontWeight: 600,
+};
+
+const content = {
+  flex: 1,
+  padding: 24,
+  overflowY: "auto",
+};
+
+const sectionTitle = { fontSize: 15, fontWeight: 700, margin: "0 0 12px" };
+
 const formStyle = { display: "flex", flexDirection: "column", gap: 10 };
-const input = { padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border, #ddd)", fontSize: 14, background: "var(--bg-input, #f9f9f9)", color: "var(--text, #222)" };
-const msgStyle = { margin: "12px 24px 0", padding: "8px 12px", borderRadius: 8, background: "#eff6ff", color: "#1d4ed8", fontSize: 13 };
+
+const input = {
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border, #ddd)",
+  fontSize: 14,
+  background: "var(--bg-input, #f9f9f9)",
+  color: "var(--text, #222)",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const actionBtn = {
+  padding: "10px 20px",
+  borderRadius: 8,
+  border: "none",
+  background: "var(--accent, #2563eb)",
+  color: "#fff",
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: "pointer",
+  alignSelf: "flex-start",
+  marginTop: 4,
+};
+
+const dangerBtn = {
+  ...actionBtn,
+  background: "#ef4444",
+  marginTop: 12,
+};
+
+const infoRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "8px 0",
+  borderBottom: "1px solid var(--border, #f0f0f0)",
+  fontSize: 14,
+};
+
+const infoLabel = { fontWeight: 600, color: "var(--text-muted, #666)" };
+const infoText = { fontSize: 14, color: "var(--text-muted, #666)", margin: "0 0 12px" };
+
+const themeBtn = {
+  padding: "10px 24px",
+  borderRadius: 8,
+  border: "1px solid var(--border, #ddd)",
+  background: "transparent",
+  cursor: "pointer",
+  fontSize: 14,
+  color: "var(--text, #222)",
+};
+
+const themeActive = {
+  ...themeBtn,
+  background: "var(--accent, #2563eb)",
+  color: "#fff",
+  border: "1px solid var(--accent, #2563eb)",
+};

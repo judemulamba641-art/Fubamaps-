@@ -1,107 +1,103 @@
+/**
+ * Prompt ChatGPT-style - FubaMaps.
+ * Barre de commande en bas de page.
+ * Routeur de commandes extensible pour future IA.
+ */
+
 import { useState } from "react";
 
-/**
- * Barre de commande (prompt) style ChatGPT.
- * Toujours visible en bas de l'ecran.
- */
-export default function ChatPrompt({ onSubmit, suggestions }) {
+export default function ChatPrompt({ onCommand }) {
   const [input, setInput] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    onSubmit(input.trim());
+    const text = input.trim();
+    if (!text) return;
+    onCommand(text);
     setInput("");
   };
 
-  const handleSuggestion = (s) => {
-    onSubmit(s);
-  };
-
   return (
-    <div style={styles.wrapper}>
-      {suggestions && suggestions.length > 0 && (
-        <div style={styles.suggestions}>
-          {suggestions.map((s) => (
-            <button key={s} style={styles.chip} onClick={() => handleSuggestion(s)}>
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-      <form onSubmit={handleSubmit} style={styles.form}>
+    <form onSubmit={handleSubmit} style={container}>
+      <div style={inputWrapper}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Tapez une commande... (ex: mes commerces, avis, settings)"
-          style={styles.input}
+          placeholder="Tapez une commande... (ex: settings, ajouter commerce, mes commerces)"
+          style={inputStyle}
         />
-        <button type="submit" style={styles.btn}>
+        <button type="submit" style={sendBtn}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 2L11 13" />
-            <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+            <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" />
           </svg>
         </button>
-      </form>
-    </div>
+      </div>
+      <div style={hints}>
+        <span style={hint} onClick={() => onCommand("mes commerces")}>mes commerces</span>
+        <span style={hint} onClick={() => onCommand("ajouter commerce")}>ajouter commerce</span>
+        <span style={hint} onClick={() => onCommand("settings")}>settings</span>
+        <span style={hint} onClick={() => onCommand("profil")}>profil</span>
+      </div>
+    </form>
   );
 }
 
-const styles = {
-  wrapper: {
-    position: "fixed",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    background: "var(--bg-card, #fff)",
-    borderTop: "1px solid var(--border, #e5e5e5)",
-    padding: "8px 16px 12px",
-    zIndex: 100,
-  },
-  suggestions: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-    marginBottom: 8,
-    justifyContent: "center",
-  },
-  chip: {
-    padding: "6px 14px",
-    borderRadius: 20,
-    border: "1px solid var(--border, #ddd)",
-    background: "var(--bg-input, #f5f5f5)",
-    color: "var(--text, #333)",
-    fontSize: 12,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
-  form: {
-    display: "flex",
-    gap: 8,
-    maxWidth: 680,
-    margin: "0 auto",
-  },
-  input: {
-    flex: 1,
-    padding: "12px 16px",
-    borderRadius: 24,
-    border: "1px solid var(--border, #ddd)",
-    fontSize: 14,
-    background: "var(--bg-input, #f9f9f9)",
-    color: "var(--text, #222)",
-    outline: "none",
-  },
-  btn: {
-    width: 44,
-    height: 44,
-    borderRadius: "50%",
-    border: "none",
-    background: "var(--accent, #2563eb)",
-    color: "#fff",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
+const container = {
+  padding: "12px 20px 16px",
+  borderTop: "1px solid var(--border, #e5e7eb)",
+  background: "var(--bg-surface, #fafafa)",
+};
+
+const inputWrapper = {
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  background: "var(--bg-card, #fff)",
+  border: "1px solid var(--border, #ddd)",
+  borderRadius: 12,
+  padding: "6px 8px 6px 16px",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+};
+
+const inputStyle = {
+  flex: 1,
+  border: "none",
+  outline: "none",
+  fontSize: 14,
+  background: "transparent",
+  color: "var(--text, #222)",
+  padding: "8px 0",
+};
+
+const sendBtn = {
+  background: "var(--accent, #2563eb)",
+  border: "none",
+  borderRadius: 8,
+  width: 36,
+  height: 36,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  color: "#fff",
+  flexShrink: 0,
+};
+
+const hints = {
+  display: "flex",
+  gap: 8,
+  marginTop: 8,
+  flexWrap: "wrap",
+  justifyContent: "center",
+};
+
+const hint = {
+  padding: "4px 12px",
+  borderRadius: 16,
+  border: "1px solid var(--border, #ddd)",
+  fontSize: 12,
+  color: "var(--text-muted, #666)",
+  cursor: "pointer",
+  transition: "all 0.15s",
+  background: "transparent",
 };
