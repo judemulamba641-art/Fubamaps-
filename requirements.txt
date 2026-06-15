@@ -1,46 +1,51 @@
 # ==============================
-# 🔥 DJANGO CORE
+# DJANGO CORE
 # ==============================
 Django
 djangorestframework
 
 # ==============================
-# 🌍 CORS (React <-> Django)
+# JWT AUTH
+# ==============================
+djangorestframework-simplejwt
+
+# ==============================
+# CORS (React <-> Django)
 # ==============================
 django-cors-headers
 
 # ==============================
-# 🔐 ENV VARIABLES
+# ENV VARIABLES
 # ==============================
 python-dotenv
 
 # ==============================
-# 🗺️ GEO (distance / localisation)
+# GEO (distance / localisation)
 # ==============================
 geopy>=2.4
 
 # ==============================
-# 🤖 OPENAI (IA)
+# OPENAI (IA)
 # ==============================
 openai>=1.0
 
 # ==============================
-# 🖼️ IMAGE UPLOAD
+# IMAGE UPLOAD
 # ==============================
 Pillow>=10.0
 
 # ==============================
-# ⚡ UTILITAIRES
+# UTILITAIRES
 # ==============================
 requests>=2.31
 
 # ==============================
-# 🧪 TESTS (optionnel mais recommandé)
+# TESTS
 # ==============================
 pytest>=8.0
 pytest-django>=4.7
 
 # ==============================
-# 🐍 SERVER (PROD READY LATER)
+# SERVER (PROD READY LATER)
 # ==============================
 gunicorn>=21.2

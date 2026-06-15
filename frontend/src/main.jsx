@@ -1,12 +1,28 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import App from './App.jsx'
-import { ToastProvider } from './components/ToastContext' // 🔥 ajout
+/**
+ * Point d'entree FubaMaps.
+ * Configure les providers (Auth, Commerce, Review, UI).
+ */
 
-createRoot(document.getElementById('root')).render(
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+
+import { AuthProvider } from "./store/authStore";
+import { CommerceProvider } from "./store/commerceStore";
+import { ReviewProvider } from "./store/reviewStore";
+import { UIProvider } from "./store/uiStore";
+
+import App from "./App";
+
+createRoot(document.getElementById("root")).render(
   <StrictMode>
-      <ToastProvider> {/* 🔥 wrapper global */}
+    <AuthProvider>
+      <UIProvider>
+        <CommerceProvider>
+          <ReviewProvider>
             <App />
-                </ToastProvider>
-                  </StrictMode>,
-                  )
+          </ReviewProvider>
+        </CommerceProvider>
+      </UIProvider>
+    </AuthProvider>
+  </StrictMode>
+);
