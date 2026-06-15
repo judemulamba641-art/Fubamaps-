@@ -1,4 +1,5 @@
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
@@ -36,6 +37,7 @@ class AvisCreateView(APIView):
     """
     POST /api/avis/
     """
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def post(self, request):
         serializer = AvisCreateSerializer(data=request.data)
@@ -57,7 +59,7 @@ class AvisUpdateView(generics.UpdateAPIView):
     """
     PUT /api/avis/{id}/update/
     """
-
+    permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = Avis.objects.filter(is_active=True)
     serializer_class = AvisUpdateSerializer
     lookup_field = "id"
@@ -72,6 +74,7 @@ class AvisDeleteView(APIView):
     """
     DELETE /api/avis/{id}/delete/
     """
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def delete(self, request, id):
         avis = get_object_or_404(Avis, id=id, is_active=True)

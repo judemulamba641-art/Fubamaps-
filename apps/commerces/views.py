@@ -1,4 +1,5 @@
 from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -29,6 +30,7 @@ class CommerceListView(APIView):
     GET /api/commerces/
     POST /api/commerces/
     """
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request):
         lat = request.GET.get("lat")
@@ -42,10 +44,20 @@ class CommerceListView(APIView):
 
         # 📍 Recherche géolocalisée
         if lat and lng:
+            try:
+                lat_f = float(lat)
+                lng_f = float(lng)
+                radius_f = float(radius)
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "lat, lng et radius doivent être des nombres valides"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             commerces = get_nearby_commerces(
-                user_lat=float(lat),
-                user_lon=float(lng),
-                radius_km=float(radius),
+                user_lat=lat_f,
+                user_lon=lng_f,
+                radius_km=radius_f,
                 category_id=category,
                 type_id=type_id,
                 sort_by=sort_by,
@@ -104,6 +116,7 @@ class CommerceCreateView(generics.CreateAPIView):
     """
     queryset = Commerce.objects.all()
     serializer_class = CommerceCreateUpdateSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
 
 # =========================================================
@@ -138,6 +151,7 @@ class CommerceUpdateView(generics.UpdateAPIView):
     """
     queryset = Commerce.objects.all()
     serializer_class = CommerceCreateUpdateSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     lookup_field = "id"
 
@@ -151,6 +165,7 @@ class CommerceDeleteView(APIView):
     """
     DELETE /api/commerces/{id}/delete/
     """
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def delete(self, request, id):
         commerce = get_object_or_404(
@@ -188,16 +203,22 @@ class NearbyCommerceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        radius = float(
-            request.GET.get("radius", 5)
-        )
+        try:
+            lat_f = float(lat)
+            lng_f = float(lng)
+            radius = float(request.GET.get("radius", 5))
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "lat, lng et radius doivent être des nombres valides"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         category = request.GET.get("category")
         type_id = request.GET.get("type")
 
         commerces = get_nearby_commerces(
-            user_lat=float(lat),
-            user_lon=float(lng),
+            user_lat=lat_f,
+            user_lon=lng_f,
             radius_km=radius,
             category_id=category,
             type_id=type_id,
