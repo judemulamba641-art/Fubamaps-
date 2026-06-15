@@ -2,9 +2,10 @@ from django.db.models import Avg
 from .models import Avis
 
 
-def create_review(validated_data):
+def create_review(validated_data, user=None):
     """
-    Créer un avis à partir des données validées
+    Créer un avis à partir des données validées.
+    Associe l'utilisateur connecté si disponible.
     """
     review = Avis.objects.create(
         commerce=validated_data["commerce"],
@@ -12,6 +13,7 @@ def create_review(validated_data):
         price_rating=validated_data.get("price_rating", 3),
         commentaire=validated_data.get("commentaire", ""),
         user_name=validated_data.get("user_name", ""),
+        user=user,
         is_active=True,
     )
     return review
