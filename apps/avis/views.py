@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -7,7 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Avg, Count
 
 from apps.commerces.models import Commerce
-from .models import Avis, AvisReport
+from .models import Avis
 from .serializers import (
     AvisSerializer,
     AvisCreateSerializer,
@@ -18,6 +20,8 @@ from .serializers import (
 )
 from .services import create_review, get_filtered_reviews
 from rest_framework.decorators import api_view
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(["GET"])
@@ -95,14 +99,29 @@ class CommerceAvisListView(APIView):
     def get(self, request, commerce_id):
         commerce = get_object_or_404(Commerce, id=commerce_id)
 
-        min_note = request.GET.get("min_note")
+        min_note_raw = request.GET.get("min_note")
         price_rating = request.GET.get("price_rating")
+
+        min_note = None
+        if min_note_raw is not None:
+            try:
+                min_note = int(min_note_raw)
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "min_note doit être un entier valide."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         avis = get_filtered_reviews(commerce, min_note)
 
-        # filtre prix
         if price_rating:
-            avis = avis.filter(price_rating=price_rating)
+            try:
+                avis = avis.filter(price_rating=int(price_rating))
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "price_rating doit être un entier valide."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         serializer = AvisSerializer(avis, many=True)
 
@@ -124,14 +143,12 @@ class AvisStatsView(APIView):
 
         avis = commerce.avis.filter(is_active=True)
 
-        # moyennes
         stats = avis.aggregate(
             average_rating=Avg("note"),
             average_price_rating=Avg("price_rating"),
             total_reviews=Count("id"),
         )
 
-        # distribution des notes
         distribution = {i: avis.filter(note=i).count() for i in range(1, 6)}
 
         data = {
@@ -165,7 +182,7 @@ class AvisReactionView(APIView):
             serializer.save()
             return Response({"message": "Réaction enregistrée"})
 
-        return Response(serializer.errors, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # =========================================================
@@ -190,4 +207,4 @@ class AvisReportView(APIView):
             serializer.save()
             return Response({"message": "Avis signalé"}, status=status.HTTP_201_CREATED)
 
-        return Response(serializer.errors, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

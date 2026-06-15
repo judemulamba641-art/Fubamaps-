@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +20,8 @@ from .serializers import (
 from .services import (
     get_nearby_commerces,
 )
+
+logger = logging.getLogger(__name__)
 
 # =========================================================
 # 📍 COMMERCE LIST + FILTER
@@ -42,16 +46,25 @@ class CommerceListView(APIView):
 
         # 📍 Recherche géolocalisée
         if lat and lng:
+            try:
+                lat_f = float(lat)
+                lng_f = float(lng)
+                radius_f = float(radius)
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "lat, lng et radius doivent être des nombres valides."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             commerces = get_nearby_commerces(
-                user_lat=float(lat),
-                user_lon=float(lng),
-                radius_km=float(radius),
+                user_lat=lat_f,
+                user_lon=lng_f,
+                radius_km=radius_f,
                 category_id=category,
                 type_id=type_id,
                 sort_by=sort_by,
             )
 
-            # 🔥 retire les commerces supprimés
             commerces = [
                 commerce
                 for commerce in commerces
@@ -59,7 +72,6 @@ class CommerceListView(APIView):
             ]
 
         else:
-            # 📍 Liste simple
             commerces = (
                 Commerce.objects
                 .filter(
@@ -159,7 +171,6 @@ class CommerceDeleteView(APIView):
             is_deleted=False
         )
 
-        # 🔥 soft delete propre
         commerce.soft_delete()
 
         return Response(
@@ -188,22 +199,27 @@ class NearbyCommerceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        radius = float(
-            request.GET.get("radius", 5)
-        )
+        try:
+            lat_f = float(lat)
+            lng_f = float(lng)
+            radius = float(request.GET.get("radius", 5))
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "lat, lng et radius doivent être des nombres valides."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         category = request.GET.get("category")
         type_id = request.GET.get("type")
 
         commerces = get_nearby_commerces(
-            user_lat=float(lat),
-            user_lon=float(lng),
+            user_lat=lat_f,
+            user_lon=lng_f,
             radius_km=radius,
             category_id=category,
             type_id=type_id,
         )
 
-        # 🔥 retire les commerces supprimés
         commerces = [
             commerce
             for commerce in commerces
@@ -306,7 +322,10 @@ class CommerceTypeListView(generics.ListAPIView):
 
         category_id = self.request.query_params.get("category")
         if category_id:
-            queryset = queryset.filter(category_id=category_id)
+            try:
+                queryset = queryset.filter(category_id=int(category_id))
+            except (ValueError, TypeError):
+                return queryset.none()
 
         return queryset
 
