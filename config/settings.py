@@ -6,11 +6,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 🔐 Sécurité
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-production")
 
-# 🔥 DEV forcé (évite tous les bugs actuels)
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1", "yes")
 
-# 🔥 Autorise tout en dev
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if h.strip()
+]
 
 # 📦 Applications
 INSTALLED_APPS = [
@@ -97,12 +99,19 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 # 🔌 DRF
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
 }
 
 # 🌐 CORS
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if origin.strip()
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # 🔐 CSRF FIX (🔥 le cœur du problème)
