@@ -25,8 +25,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
 
+    # JWT
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
+
     # Apps projet
     "apps.core",
+    "apps.users",
     "apps.commerces",
     "apps.avis",
 ]
@@ -99,7 +104,23 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
 }
+
+# 🔑 JWT
+from datetime import timedelta  # noqa: E402
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+AUTH_USER_MODEL = "users.User"
 
 # 🌐 CORS
 CORS_ALLOW_ALL_ORIGINS = True
@@ -124,6 +145,10 @@ SESSION_COOKIE_SAMESITE = "Lax"
 
 CSRF_COOKIE_DOMAIN = None
 SESSION_COOKIE_DOMAIN = None
+
+# 📂 Media
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # 🔑 Default field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
